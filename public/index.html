@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Car Maintenance Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Car Maintenance Tracker</h1>
+          <p>Stay on top of upcoming service, insurance, and expense reminders.</p>
+        </div>
+        <div class="topbar-meta">
+          <span id="today-label">ISO Date: --</span>
+          <button id="prev-month">‹</button>
+          <button id="next-month">›</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="card calendar-card">
+          <div class="section-header">
+            <div>
+              <p class="section-title">Monthly calendar</p>
+              <h2 id="month-label">Loading...</h2>
+            </div>
+            <div class="calendar-summary">
+              <span id="month-events-count">0 events</span>
+              <span id="month-cost-total">€0</span>
+            </div>
+          </div>
+          <div class="weekday-bar">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+          <div id="calendar-grid" class="calendar-grid"></div>
+
+          <div class="form-panel">
+            <div class="section-title-row">
+              <p class="section-title">Add or edit a car event</p>
+              <span class="hint">All data is saved on the server.</span>
+            </div>
+            <form id="event-form">
+              <div class="form-row">
+                <label for="title">Title</label>
+                <input id="title" name="title" type="text" placeholder="Oil change, inspection..." required />
+              </div>
+              <div class="form-row split">
+                <div>
+                  <label for="date">Date (ISO)</label>
+                  <input id="date" name="date" type="date" required />
+                </div>
+                <div>
+                  <label for="cost">Cost (€)</label>
+                  <input id="cost" name="cost" type="number" min="0" step="0.01" value="0" required />
+                </div>
+              </div>
+              <div class="form-row split">
+                <label for="repeat">Repeat</label>
+                <select id="repeat" name="repeat">
+                  <option value="once">One-time</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+                <label for="notes">Notes</label>
+                <input id="notes" name="notes" type="text" placeholder="Location, odometer, vendor..." />
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Save event</button>
+                <button id="clear-form" type="button" class="secondary">Clear</button>
+              </div>
+              <input id="event-id" type="hidden" />
+            </form>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="card timeline-card">
+            <div class="section-header">
+              <div>
+                <p class="section-title">Events timeline</p>
+                <h3>Past 6 months + next 6 months</h3>
+              </div>
+            </div>
+            <div id="event-list" class="timeline-list"></div>
+          </section>
+
+          <section class="card stats-card">
+            <div class="section-header">
+              <div>
+                <p class="section-title">Yearly expense stats</p>
+                <h3 id="stats-year">2024</h3>
+              </div>
+            </div>
+            <div class="stats-overview">
+              <div>
+                <span>Total</span>
+                <strong id="year-total">€0</strong>
+              </div>
+              <div>
+                <span>Events</span>
+                <strong id="year-events">0</strong>
+              </div>
+              <div>
+                <span>Average / month</span>
+                <strong id="year-average">€0</strong>
+              </div>
+            </div>
+            <div id="monthly-bars" class="monthly-bars"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>

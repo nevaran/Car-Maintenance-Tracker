@@ -1,0 +1,12 @@
+{
+  "name": "car-maintenance-tracker",
+  "version": "1.0.0",
+  "description": "Server-backed car maintenance tracker with calendar, event CRUD, and yearly expense stats.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
