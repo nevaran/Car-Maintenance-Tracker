@@ -80,6 +80,7 @@ select {
 .workspace {
   display: grid;
   grid-template-columns: 1.8fr 1fr;
+  grid-template-rows: 1fr;
   gap: 16px;
   min-height: 0;
   flex: 1;
@@ -131,45 +132,57 @@ select {
 
 .calendar-card {
   display: grid;
-  grid-template-rows: auto 42px 1fr auto;
-  gap: 18px;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 14px;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .calendar-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   color: #8da6ff;
+  font-size: 0.92rem;
 }
 
 #month-label {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.8rem;
 }
 
 .weekday-bar {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
   color: #7d90b4;
-  font-size: .86rem;
+  font-size: .78rem;
+}
+
+.calendar-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
-  gap: 10px;
+  grid-auto-rows: minmax(28px, 1fr);
+  gap: 8px;
   min-height: 0;
-  height: 100%;
+  flex: 1;
+  overflow: auto;
 }
 
 .calendar-cell {
   position: relative;
-  border-radius: 18px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 10px;
   background: rgba(16, 28, 48, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
@@ -250,30 +263,31 @@ select {
 
 .form-panel {
   display: grid;
-  gap: 12px;
-  margin-top: 12px;
-  overflow: auto;
+  gap: 8px;
+  margin-top: 8px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .section-title-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
 .form-row {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .form-row.split {
   grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 label {
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   color: #a9b5d5;
 }
 
@@ -281,10 +295,15 @@ input,
 select {
   width: 100%;
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
+  border-radius: 14px;
   background: rgba(7, 16, 28, 0.95);
   color: #eef5ff;
-  padding: 14px 16px;
+  padding: 10px 12px;
+  min-height: 38px;
+}
+
+input::placeholder {
+  color: rgba(255,255,255,0.45);
 }
 
 input:focus,
@@ -297,8 +316,16 @@ button:focus {
 .form-actions {
   display: flex;
   justify-content: flex-start;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
+}
+
+button.primary {
+  padding: 12px 18px;
+}
+
+button.secondary {
+  padding: 12px 16px;
 }
 
 button.primary,
@@ -312,7 +339,7 @@ button.primary {
   border-radius: 16px;
   background: linear-gradient(135deg, #6e94ff, #a0c5ff);
   color: #08131f;
-  padding: 14px 22px;
+  padding: 10px 16px;
   cursor: pointer;
 }
 
@@ -321,7 +348,7 @@ button.secondary {
   border-radius: 16px;
   background: transparent;
   color: #d8e2ff;
-  padding: 14px 20px;
+  padding: 10px 14px;
   cursor: pointer;
 }
 
@@ -340,10 +367,18 @@ button.secondary {
   min-height: 0;
 }
 
-.timeline-list,
+.timeline-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  overflow: auto;
+  min-height: 0;
+}
+
 .monthly-bars {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
   overflow: auto;
   min-height: 0;
 }
@@ -351,9 +386,9 @@ button.secondary {
 .timeline-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 20px;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 18px;
   background: rgba(19, 31, 54, 0.92);
   border: 1px solid rgba(255,255,255,0.05);
 }
@@ -361,25 +396,25 @@ button.secondary {
 .timeline-item time {
   display: block;
   color: #8da6ff;
-  font-size: 0.8rem;
-  margin-bottom: 4px;
+  font-size: 0.76rem;
+  margin-bottom: 3px;
 }
 
 .timeline-item strong {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .timeline-item .item-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .timeline-item button {
   border: none;
   border-radius: 12px;
-  padding: 8px 12px;
+  padding: 7px 10px;
   color: #eef5ff;
   cursor: pointer;
   background: rgba(255,255,255,0.05);
@@ -396,44 +431,44 @@ button.secondary {
 .stats-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .stats-overview div {
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.03);
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.06);
 }
 
 .stats-overview span {
   display: block;
   color: #8da6ff;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 
 .stats-overview strong {
   display: block;
-  margin-top: 8px;
-  font-size: 1.35rem;
+  margin-top: 6px;
+  font-size: 1.15rem;
 }
 
 .bar-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
 .bar-meta {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .bar-track {
   position: relative;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: rgba(255,255,255,0.06);
   overflow: hidden;
