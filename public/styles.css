@@ -196,10 +196,10 @@ select {
 .calendar-cell::before {
   content: '';
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 26px;
-  height: 26px;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
   background-color: #ff8c00;
   mask-image: url('images/calendar-strip.png');
   mask-size: contain;
@@ -213,8 +213,17 @@ select {
   transition: opacity .25s ease;
 }
 
-.calendar-cell.has-event::before {
-  opacity: 1;
+.calendar-cell.has-done-event::before {
+  background-color: #4ade80;
+}
+
+.calendar-cell.has-done-event {
+  /* Remove green border from the cell itself */
+}
+
+.event-chip.done {
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.18), rgba(34, 197, 94, 0.08));
+  color: #4ade80;
 }
 
 .calendar-cell:hover {
@@ -385,12 +394,14 @@ button.secondary {
 
 .timeline-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
   gap: 12px;
   padding: 12px;
   border-radius: 18px;
   background: rgba(19, 31, 54, 0.92);
   border: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+  align-items: start;
 }
 
 .timeline-item time {
@@ -405,10 +416,29 @@ button.secondary {
   margin-bottom: 4px;
 }
 
+.timeline-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.timeline-meta {
+  display: block;
+  color: #c8d5ff;
+  font-size: 0.87rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .timeline-item .item-actions {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .timeline-item button {
@@ -418,6 +448,8 @@ button.secondary {
   color: #eef5ff;
   cursor: pointer;
   background: rgba(255,255,255,0.05);
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .timeline-item button.edit {
@@ -426,6 +458,137 @@ button.secondary {
 
 .timeline-item button.delete {
   background: rgba(255, 92, 92, 0.18);
+}
+
+.timeline-item button.done-btn {
+  background: rgba(255, 165, 0, 0.2);
+  font-weight: bold;
+  min-width: 32px;
+}
+
+.timeline-item button.done-btn:hover {
+  background: rgba(255, 165, 0, 0.3);
+}
+
+.done-btn-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 80px;
+  height: 42px;
+  border: 2px solid rgba(255, 165, 0, 0.4);
+  border-radius: 14px;
+  background: rgba(255, 165, 0, 0.08);
+  color: #ff8c00;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.done-btn-large .button-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.done-btn-large .button-text {
+  line-height: 1;
+}
+
+.done-btn-large:hover {
+  border-color: rgba(255, 165, 0, 0.7);
+  background: rgba(255, 165, 0, 0.15);
+  transform: scale(1.02);
+}
+
+.done-btn-large:active {
+  transform: scale(0.98);
+}
+
+.done-btn-large.completed {
+  border-color: rgba(74, 222, 128, 0.6);
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+}
+
+.done-btn-large.completed:hover {
+  border-color: rgba(74, 222, 128, 0.85);
+  background: rgba(74, 222, 128, 0.2);
+}
+
+.checkmark {
+  display: inline-block;
+}
+
+.pending-circle {
+  display: inline-block;
+}
+
+.timeline-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 18px 0 0 18px;
+  transition: background-color 0.25s ease;
+}
+
+.timeline-strip.strip-upcoming {
+  background-color: #ff8c00;
+}
+
+.timeline-strip.strip-past {
+  background-color: #dc1d1d;
+}
+
+.timeline-strip.strip-neutral {
+  background-color: #555;
+}
+
+.timeline-strip.strip-done {
+  background-color: #4ade80;
+}
+
+.timeline-item.done {
+  opacity: 1;
+}
+
+.timeline-item.done strong {
+  text-decoration: none;
+  color: #4ade80;
+}
+
+.timeline-item.done .timeline-meta {
+  color: #86efac;
+}
+
+.timeline-item.is-past strong {
+  color: #8da6ff;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a9b5d5;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  min-height: auto;
+  height: 18px;
+  width: 18px;
+  cursor: pointer;
+  accent-color: #6e94ff;
 }
 
 .stats-overview {
@@ -483,6 +646,40 @@ button.secondary {
 .bar-label {
   font-size: 0.82rem;
   color: #c8d5ff;
+}
+
+.timeline-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-group label {
+  font-size: 0.8rem;
+  color: #a9b5d5;
+  white-space: nowrap;
+}
+
+.control-group select {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(7, 16, 28, 0.95);
+  color: #eef5ff;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  min-width: 50px;
+}
+
+.control-group select:focus {
+  outline: 2px solid rgba(110, 148, 255, 0.35);
+  outline-offset: 2px;
 }
 
 @media (max-width: 1200px) {

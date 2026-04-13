@@ -1,6 +1,8 @@
 const state = {
   events: [],
   currentDate: new Date(),
+  timelinePastMonths: 3,
+  timelineFutureMonths: 8,
 };
 
 const dom = {
@@ -21,12 +23,16 @@ const dom = {
   cost: document.getElementById('cost'),
   repeat: document.getElementById('repeat'),
   notes: document.getElementById('notes'),
+  done: document.getElementById('done'),
   eventId: document.getElementById('event-id'),
   clearForm: document.getElementById('clear-form'),
   yearSelect: document.getElementById('year-select'),
   monthSelect: document.getElementById('month-select'),
   prevMonth: document.getElementById('prev-month'),
   nextMonth: document.getElementById('next-month'),
+  timelineRangeLabel: document.getElementById('timeline-range-label'),
+  timelinePastMonths: document.getElementById('timeline-past-months'),
+  timelineFutureMonths: document.getElementById('timeline-future-months'),
 };
 
 function pad(value) {
@@ -71,6 +77,48 @@ function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function isEventPast(eventDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const event = new Date(eventDate);
+  event.setHours(0, 0, 0, 0);
+  return event < today;
+}
+
+function isEventWithinLastWeek(eventDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const event = new Date(eventDate);
+  event.setHours(0, 0, 0, 0);
+  const oneWeekFromNow = new Date(today);
+  oneWeekFromNow.setDate(today.getDate() + 7);
+  return event >= today && event <= oneWeekFromNow;
+}
+
+function checkAndResetYearlyEvents() {
+  const currentYear = new Date().getFullYear();
+  let needsUpdate = false;
+
+  state.events.forEach(event => {
+    if (event.repeat === 'yearly' && event.done === true) {
+      const eventDate = parseISODate(event.date);
+      // If the event is marked as done but we're in a different year than when it was marked done
+      // or if it's a new year and the event hasn't occurred yet this year
+      if (eventDate.getFullYear() < currentYear) {
+        event.done = false;
+        needsUpdate = true;
+      }
+    }
+  });
+
+  if (needsUpdate) {
+    // Save all events to persist the changes
+    Promise.all(state.events.map(event => saveEvent(event))).then(() => {
+      renderApp();
+    });
+  }
+}
+
 function getEventOccurrences(event, startDate, endDate) {
   const occurrences = [];
   const baseDate = parseISODate(event.date);
@@ -113,9 +161,10 @@ function renderCalendar() {
 
   days.forEach((date) => {
     const occurrences = state.events.flatMap((event) => getEventOccurrences(event, date, date));
+    const hasDoneEvent = occurrences.some(evt => evt.done === true);
     const cell = document.createElement('button');
     cell.type = 'button';
-    cell.className = `calendar-cell${date.getMonth() !== month ? ' inactive' : ''}${occurrences.length ? ' has-event' : ''}`;
+    cell.className = `calendar-cell${date.getMonth() !== month ? ' inactive' : ''}${occurrences.length ? ' has-event' : ''}${hasDoneEvent ? ' has-done-event' : ''}`;
     cell.innerHTML = `
       <div class="day-number">${date.getDate()}</div>
       <div class="event-dot"></div>
@@ -125,11 +174,11 @@ function renderCalendar() {
     if (occurrences.length) {
       occurrences.slice(0, 2).forEach((evt) => {
         const chip = document.createElement('span');
-        chip.className = 'event-chip';
+        chip.className = `event-chip${evt.done ? ' done' : ''}`;
         chip.textContent = `${evt.title} ${evt.repeat === 'yearly' ? '🔁' : ''}`;
         dot.appendChild(chip);
       });
-      cell.title = occurrences.map((evt) => `${evt.title} (${evt.occurrence})`).join('\n');
+      cell.title = occurrences.map((evt) => `${evt.title} (${evt.occurrence}) ${evt.done ? '[DONE]' : ''}`).join('\n');
     } else {
       cell.title = 'No events';
     }
@@ -142,21 +191,44 @@ function renderCalendar() {
 }
 
 function buildTimelineItems() {
-  const reference = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
-  const start = new Date(reference.getFullYear(), reference.getMonth() - 6, 1);
-  const end = new Date(reference.getFullYear(), reference.getMonth() + 7, 0);
-  const occurrences = state.events.flatMap((event) => getEventOccurrences(event, start, end));
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() - state.timelinePastMonths, 1);
+  const end = new Date(today.getFullYear(), today.getMonth() + state.timelineFutureMonths + 1, 0);
+  const occurrences = state.events.flatMap((event) => {
+    const eventOccurrences = getEventOccurrences(event, start, end);
+    // For yearly events, only show future occurrences
+    if (event.repeat === 'yearly') {
+      return eventOccurrences.filter(occ => !isEventPast(occ.dateObj));
+    }
+    return eventOccurrences;
+  });
   occurrences.sort((a, b) => a.dateObj - b.dateObj);
 
+  // Update the range label
+  dom.timelineRangeLabel.textContent = `Past ${state.timelinePastMonths} months + next ${state.timelineFutureMonths} months`;
+
   dom.eventList.innerHTML = occurrences.map((evt) => {
+    const isPast = isEventPast(evt.dateObj);
+    const isWithinLastWeek = isEventWithinLastWeek(evt.dateObj);
+    const isDone = evt.done === true;
+    let stripClass = 'strip-neutral';
+    if (isDone) {
+      stripClass = 'strip-done';
+    } else if (isPast) {
+      stripClass = 'strip-past';
+    } else if (isWithinLastWeek) {
+      stripClass = 'strip-upcoming';
+    }
     return `
-      <div class="timeline-item">
-        <div>
+      <div class="timeline-item${evt.done ? ' done' : ''}${isPast ? ' is-past' : ''}">
+        <div class="timeline-strip ${stripClass}"></div>
+        <button class="done-btn-large${evt.done ? ' completed' : ''}" data-id="${evt.id}" title="${evt.done ? 'Mark as pending' : 'Mark as done'}" aria-label="${evt.done ? 'Mark as completed' : 'Mark as pending'}">
+          ${evt.done ? '<span class="button-icon">✓</span><span class="button-text">Done</span>' : '<span class="button-icon">○</span><span class="button-text">Pending</span>'}
+        </button>
+        <div class="timeline-content">
           <time datetime="${evt.occurrence}">${evt.occurrence}</time>
           <strong>${evt.title}</strong>
-          <span>${evt.repeat === 'yearly' ? 'Yearly reminder' : 'One-time reminder'}</span>
-          <span>€${Number(evt.cost).toFixed(2)}</span>
-          <small style="color:#8da6ff">${evt.notes || 'No notes'}</small>
+          <span class="timeline-meta">${evt.repeat === 'yearly' ? 'Yearly reminder' : 'One-time reminder'} • €${Number(evt.cost).toFixed(2)} • ${evt.notes || 'No notes'}</span>
         </div>
         <div class="item-actions">
           <button class="edit" data-id="${evt.id}">Edit</button>
@@ -166,6 +238,9 @@ function buildTimelineItems() {
     `;
   }).join('') || '<div style="color:#8da6ff; padding: 18px; border-radius: 18px; background: rgba(255,255,255,0.03);">No events found in the selected range.</div>';
 
+  dom.eventList.querySelectorAll('button.done-btn-large').forEach((button) => {
+    button.addEventListener('click', () => toggleEventDone(button.dataset.id));
+  });
   dom.eventList.querySelectorAll('button.edit').forEach((button) => {
     button.addEventListener('click', () => loadEventForEdit(button.dataset.id));
   });
@@ -215,6 +290,8 @@ async function fetchEvents() {
   const response = await fetch('/api/events');
   state.events = await response.json();
   renderApp();
+  // Check for yearly event resets after loading events
+  checkAndResetYearlyEvents();
 }
 
 async function saveEvent(event) {
@@ -233,10 +310,18 @@ async function removeEvent(id) {
   await fetchEvents();
 }
 
+async function toggleEventDone(id) {
+  const event = state.events.find((item) => item.id === id);
+  if (!event) return;
+  event.done = !event.done;
+  await saveEvent(event);
+}
+
 function resetForm() {
   dom.form.reset();
   dom.eventId.value = '';
   dom.date.value = formatISO(new Date());
+  dom.done.checked = false;
 }
 
 function loadEventForEdit(id) {
@@ -247,6 +332,7 @@ function loadEventForEdit(id) {
   dom.cost.value = Number(event.cost || 0).toFixed(2);
   dom.repeat.value = event.repeat;
   dom.notes.value = event.notes || '';
+  dom.done.checked = event.done || false;
   dom.eventId.value = event.id;
 }
 
@@ -266,6 +352,7 @@ dom.form.addEventListener('submit', async (event) => {
     cost: Number(dom.cost.value) || 0,
     repeat: dom.repeat.value,
     notes: dom.notes.value.trim(),
+    done: dom.done.checked,
   };
   if (!payload.title || !payload.date) return;
   await saveEvent(payload);
@@ -296,6 +383,16 @@ dom.yearSelect.addEventListener('change', () => {
   renderApp();
 });
 
+dom.timelinePastMonths.addEventListener('change', () => {
+  state.timelinePastMonths = parseInt(dom.timelinePastMonths.value, 10);
+  renderApp();
+});
+
+dom.timelineFutureMonths.addEventListener('change', () => {
+  state.timelineFutureMonths = parseInt(dom.timelineFutureMonths.value, 10);
+  renderApp();
+});
+
 window.addEventListener('DOMContentLoaded', () => {
   const currentYear = new Date().getFullYear();
   for (let year = currentYear - 5; year <= currentYear + 5; year++) {
@@ -305,5 +402,18 @@ window.addEventListener('DOMContentLoaded', () => {
     dom.yearSelect.appendChild(option);
   }
   dom.date.value = formatISO(new Date());
+  // Set initial timeline range values
+  dom.timelinePastMonths.value = state.timelinePastMonths;
+  dom.timelineFutureMonths.value = state.timelineFutureMonths;
   fetchEvents();
+
+  // Check for yearly event resets every minute
+  setInterval(checkAndResetYearlyEvents, 60000);
+
+  // Check for resets when page becomes visible again
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkAndResetYearlyEvents();
+    }
+  });
 });

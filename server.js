@@ -36,7 +36,8 @@ app.post('/api/events', (req, res) => {
     date: incoming.date,
     cost: Number(incoming.cost) || 0,
     repeat: incoming.repeat === 'yearly' ? 'yearly' : 'once',
-    notes: incoming.notes || ''
+    notes: incoming.notes || '',
+    done: incoming.done === true || incoming.done === 'true' || false,
   };
   if (!event.date) {
     return res.status(400).json({ error: 'Date is required.' });
@@ -58,6 +59,7 @@ app.put('/api/events/:id', (req, res) => {
   existing.cost = Number(incoming.cost) || 0;
   existing.repeat = incoming.repeat === 'yearly' ? 'yearly' : 'once';
   existing.notes = incoming.notes || existing.notes;
+  existing.done = incoming.done === true || incoming.done === 'true' ? true : false;
   saveEvents(events);
   res.json(existing);
 });

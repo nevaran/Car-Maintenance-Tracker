@@ -86,6 +86,10 @@
                 <label for="notes">Notes</label>
                 <input id="notes" name="notes" type="text" placeholder="Location, odometer, vendor..." />
               </div>
+              <label for="done" class="checkbox-label">
+                <input id="done" name="done" type="checkbox" />
+                <span>Mark as completed</span>
+              </label>
               <div class="form-actions">
                 <button type="submit" class="primary">Save event</button>
                 <button id="clear-form" type="button" class="secondary">Clear</button>
@@ -100,7 +104,29 @@
             <div class="section-header">
               <div>
                 <p class="section-title">Events timeline</p>
-                <h3>Past 6 months + next 6 months</h3>
+                <h3 id="timeline-range-label">Past 3 months + next 6 months</h3>
+              </div>
+              <div class="timeline-controls">
+                <div class="control-group">
+                  <label for="timeline-past-months">Past months:</label>
+                  <select id="timeline-past-months">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3" selected>3</option>
+                    <option value="6">6</option>
+                    <option value="12">12</option>
+                  </select>
+                </div>
+                <div class="control-group">
+                  <label for="timeline-future-months">Future months:</label>
+                  <select id="timeline-future-months">
+                    <option value="1">1</option>
+                    <option value="3">3</option>
+                    <option value="6" selected>6</option>
+                    <option value="12">12</option>
+                    <option value="24">24</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div id="event-list" class="timeline-list"></div>
