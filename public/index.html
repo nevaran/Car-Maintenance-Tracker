@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Car Maintenance Tracker</title>
+    <link rel="icon" href="favicon.ico" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -15,8 +16,6 @@
         </div>
         <div class="topbar-meta">
           <span id="today-label">ISO Date: --</span>
-          <button id="prev-month">‹</button>
-          <button id="next-month">›</button>
         </div>
       </header>
 
@@ -27,10 +26,29 @@
               <p class="section-title">Monthly calendar</p>
               <h2 id="month-label">Loading...</h2>
             </div>
-            <div class="calendar-summary">
-              <span id="month-events-count">0 events</span>
-              <span id="month-cost-total">€0</span>
+            <div class="calendar-controls">
+              <select id="year-select"></select>
+              <select id="month-select">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+              </select>
+              <button id="prev-month">‹</button>
+              <button id="next-month">›</button>
             </div>
+          </div>
+          <div class="calendar-summary">
+            <span id="month-events-count">0 events</span>
+            <span id="month-cost-total">€0</span>
           </div>
           <div class="weekday-bar">
             <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
@@ -50,7 +68,7 @@
               <div class="form-row split">
                 <div>
                   <label for="date">Date (ISO)</label>
-                  <input id="date" name="date" type="date" required />
+                  <input id="date" name="date" type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" required />
                 </div>
                 <div>
                   <label for="cost">Cost (€)</label>

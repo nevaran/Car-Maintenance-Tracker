@@ -23,12 +23,23 @@ const dom = {
   notes: document.getElementById('notes'),
   eventId: document.getElementById('event-id'),
   clearForm: document.getElementById('clear-form'),
+  yearSelect: document.getElementById('year-select'),
+  monthSelect: document.getElementById('month-select'),
   prevMonth: document.getElementById('prev-month'),
   nextMonth: document.getElementById('next-month'),
 };
 
+function pad(value) {
+  return String(value).padStart(2, '0');
+}
+
 function formatISO(date) {
-  return date.toISOString().slice(0, 10);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function parseISODate(value) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function formatMoney(amount) {
@@ -62,7 +73,7 @@ function isSameDay(a, b) {
 
 function getEventOccurrences(event, startDate, endDate) {
   const occurrences = [];
-  const baseDate = new Date(event.date);
+  const baseDate = parseISODate(event.date);
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (event.repeat === 'yearly') {
@@ -94,7 +105,9 @@ function renderCalendar() {
   const monthEvents = getMonthEvents(year, month);
   const monthCost = monthEvents.reduce((sum, evt) => sum + Number(evt.cost || 0), 0);
 
-  dom.monthLabel.textContent = state.currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  dom.monthLabel.textContent = `${state.currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })} (${String(month + 1).padStart(2, '0')})`;
+  dom.yearSelect.value = year;
+  dom.monthSelect.value = month;
   dom.monthEventsCount.textContent = `${monthEvents.length} event${monthEvents.length !== 1 ? 's' : ''}`;
   dom.monthCostTotal.textContent = formatMoney(monthCost);
 
@@ -102,20 +115,23 @@ function renderCalendar() {
     const occurrences = state.events.flatMap((event) => getEventOccurrences(event, date, date));
     const cell = document.createElement('button');
     cell.type = 'button';
-    cell.className = `calendar-cell${date.getMonth() !== month ? ' inactive' : ''}`;
+    cell.className = `calendar-cell${date.getMonth() !== month ? ' inactive' : ''}${occurrences.length ? ' has-event' : ''}`;
     cell.innerHTML = `
       <div class="day-number">${date.getDate()}</div>
       <div class="event-dot"></div>
     `;
     const dot = cell.querySelector('.event-dot');
-    occurrences.slice(0, 2).forEach((evt) => {
-      const chip = document.createElement('span');
-      chip.className = 'event-chip';
-      chip.textContent = `${evt.title} ${evt.repeat === 'yearly' ? '🔁' : ''}`;
-      dot.appendChild(chip);
-    });
-    if (!occurrences.length) {
-      dot.textContent = 'No events';
+    dot.innerHTML = '';
+    if (occurrences.length) {
+      occurrences.slice(0, 2).forEach((evt) => {
+        const chip = document.createElement('span');
+        chip.className = 'event-chip';
+        chip.textContent = `${evt.title} ${evt.repeat === 'yearly' ? '🔁' : ''}`;
+        dot.appendChild(chip);
+      });
+      cell.title = occurrences.map((evt) => `${evt.title} (${evt.occurrence})`).join('\n');
+    } else {
+      cell.title = 'No events';
     }
     cell.addEventListener('click', () => {
       dom.date.value = formatISO(date);
@@ -126,13 +142,11 @@ function renderCalendar() {
 }
 
 function buildTimelineItems() {
-  const today = new Date();
-  const start = new Date(today);
-  start.setMonth(start.getMonth() - 6);
-  const end = new Date(today);
-  end.setMonth(end.getMonth() + 6);
+  const reference = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
+  const start = new Date(reference.getFullYear(), reference.getMonth() - 6, 1);
+  const end = new Date(reference.getFullYear(), reference.getMonth() + 7, 0);
   const occurrences = state.events.flatMap((event) => getEventOccurrences(event, start, end));
-  occurrences.sort((a, b) => new Date(a.occurrence) - new Date(b.occurrence));
+  occurrences.sort((a, b) => a.dateObj - b.dateObj);
 
   dom.eventList.innerHTML = occurrences.map((evt) => {
     return `
@@ -270,7 +284,26 @@ dom.nextMonth.addEventListener('click', () => {
   renderApp();
 });
 
+dom.monthSelect.addEventListener('change', () => {
+  const selectedMonth = parseInt(dom.monthSelect.value, 10);
+  state.currentDate.setMonth(selectedMonth);
+  renderApp();
+});
+
+dom.yearSelect.addEventListener('change', () => {
+  const selectedYear = parseInt(dom.yearSelect.value, 10);
+  state.currentDate.setFullYear(selectedYear);
+  renderApp();
+});
+
 window.addEventListener('DOMContentLoaded', () => {
+  const currentYear = new Date().getFullYear();
+  for (let year = currentYear - 5; year <= currentYear + 5; year++) {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    dom.yearSelect.appendChild(option);
+  }
   dom.date.value = formatISO(new Date());
   fetchEvents();
 });
