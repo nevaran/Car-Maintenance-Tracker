@@ -2,7 +2,7 @@ const state = {
   events: [],
   currentDate: new Date(),
   timelinePastMonths: 3,
-  timelineFutureMonths: 8,
+  timelineFutureMonths: 6,
 };
 
 const dom = {
