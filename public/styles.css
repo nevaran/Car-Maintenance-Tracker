@@ -196,34 +196,30 @@ select {
 .calendar-cell::before {
   content: '';
   position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 12px;
-  height: 12px;
+  top: 0;
+  bottom: 0;
+  right: 0;             /* Anchors the strip firmly to the right side */
+  height: 100%;         /* Forces the element to take the full height of the cell */
+  aspect-ratio: 1 / 1;  /* Forces the width to exactly equal the calculated height */
   background-color: #ff8c00;
   mask-image: url('images/calendar-strip.png');
-  mask-size: contain;
+  mask-size: 100% 100%; /* Stretches your image to perfectly fill this square box */
   mask-position: center;
   mask-repeat: no-repeat;
   -webkit-mask-image: url('images/calendar-strip.png');
-  -webkit-mask-size: contain;
+  -webkit-mask-size: 100% 100%;
   -webkit-mask-position: center;
   -webkit-mask-repeat: no-repeat;
   opacity: 0;
   transition: opacity .25s ease;
 }
 
+.calendar-cell.has-event::before {
+  opacity: 1;
+}
+
 .calendar-cell.has-done-event::before {
   background-color: #4ade80;
-}
-
-.calendar-cell.has-done-event {
-  /* Remove green border from the cell itself */
-}
-
-.event-chip.done {
-  background: linear-gradient(135deg, rgba(74, 222, 128, 0.18), rgba(34, 197, 94, 0.08));
-  color: #4ade80;
 }
 
 .calendar-cell:hover {
@@ -688,3 +684,4 @@ button.secondary {
     grid-template-rows: 1fr 1fr;
   }
 }
+
