@@ -4,23 +4,16 @@ A modern browser-based car maintenance tracker with server-side data persistence
 
 ## Run locally
 
-1. Install dependencies:
+1. Install Rust and Cargo if needed: https://rustup.rs/
+2. Build and run the server:
 
 ```bash
-npm install
-```
-
-2. Start the server:
-
-```bash
-npm start
+cargo run --release
 ```
 
 3. Open `http://localhost:3000` in your browser.
 
 ## Run in Docker
-
-If you do not have Node.js installed locally, use Docker instead.
 
 Build the container:
 
@@ -42,7 +35,7 @@ Then open `http://localhost:3000`.
 docker compose up --build
 ```
 
-The data directory is mounted into the container so event data persists between runs.
+The `data` directory is mounted so event data persists between runs.
 
 ## Features
 

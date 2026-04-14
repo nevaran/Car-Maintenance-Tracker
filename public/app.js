@@ -1,8 +1,10 @@
+const POLL_INTERVAL_MS = 30000;
+
 const state = {
   events: [],
   currentDate: new Date(),
-  timelinePastMonths: 3,
-  timelineFutureMonths: 6,
+  timelinePastMonths: 2,
+  timelineFutureMonths: 9,
 };
 
 const dom = {
@@ -17,6 +19,11 @@ const dom = {
   yearEvents: document.getElementById('year-events'),
   yearAverage: document.getElementById('year-average'),
   monthlyBars: document.getElementById('monthly-bars'),
+  modal: document.getElementById('event-modal'),
+  modalOverlay: document.getElementById('event-modal-overlay'),
+  openEventModal: document.getElementById('open-event-modal'),
+  closeEventModal: document.getElementById('close-event-modal'),
+  cancelEventButton: document.getElementById('cancel-event'),
   form: document.getElementById('event-form'),
   title: document.getElementById('title'),
   date: document.getElementById('date'),
@@ -50,6 +57,19 @@ function parseISODate(value) {
 
 function formatMoney(amount) {
   return `€${amount.toFixed(2)}`;
+}
+
+function showEventModal({ reset = false } = {}) {
+  if (reset) {
+    resetForm();
+  }
+  dom.modal.classList.add('open');
+  dom.modal.setAttribute('aria-hidden', 'false');
+}
+
+function hideEventModal() {
+  dom.modal.classList.remove('open');
+  dom.modal.setAttribute('aria-hidden', 'true');
 }
 
 function startOfWeek(date) {
@@ -172,21 +192,34 @@ function renderCalendar() {
     const dot = cell.querySelector('.event-dot');
     dot.innerHTML = '';
     if (occurrences.length) {
-      occurrences.slice(0, 2).forEach((evt) => {
+      const visibleEvents = occurrences.slice(0, 2);
+      visibleEvents.forEach((evt) => {
         const chip = document.createElement('span');
         chip.className = `event-chip${evt.done ? ' done' : ''}`;
         chip.textContent = `${evt.title} ${evt.repeat === 'yearly' ? '🔁' : ''}`;
         dot.appendChild(chip);
       });
+      if (occurrences.length > visibleEvents.length) {
+        const hiddenCount = occurrences.length - visibleEvents.length;
+        const overflowChip = document.createElement('span');
+        overflowChip.className = 'event-chip overflow';
+        overflowChip.textContent = `+${hiddenCount} more`;
+        dot.appendChild(overflowChip);
+      }
       cell.title = occurrences.map((evt) => `${evt.title} (${evt.occurrence}) ${evt.done ? '[DONE]' : ''}`).join('\n');
     } else {
       cell.title = 'No events';
     }
     cell.addEventListener('click', () => {
+      resetForm();
       dom.date.value = formatISO(date);
+      showEventModal();
       dom.title.focus();
     });
     dom.calendarGrid.appendChild(cell);
+    if (occurrences.length && cell.clientHeight < 70) {
+      cell.classList.add('no-preview');
+    }
   });
 }
 
@@ -334,6 +367,7 @@ function loadEventForEdit(id) {
   dom.notes.value = event.notes || '';
   dom.done.checked = event.done || false;
   dom.eventId.value = event.id;
+  showEventModal();
 }
 
 function renderApp() {
@@ -357,6 +391,7 @@ dom.form.addEventListener('submit', async (event) => {
   if (!payload.title || !payload.date) return;
   await saveEvent(payload);
   resetForm();
+  hideEventModal();
 });
 
 dom.clearForm.addEventListener('click', resetForm);
@@ -405,14 +440,32 @@ window.addEventListener('DOMContentLoaded', () => {
   // Set initial timeline range values
   dom.timelinePastMonths.value = state.timelinePastMonths;
   dom.timelineFutureMonths.value = state.timelineFutureMonths;
+  dom.openEventModal.addEventListener('click', () => showEventModal({ reset: true }));
+  dom.closeEventModal.addEventListener('click', hideEventModal);
+  dom.cancelEventButton.addEventListener('click', hideEventModal);
+  dom.modalOverlay.addEventListener('click', hideEventModal);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && dom.modal.classList.contains('open')) {
+      hideEventModal();
+    }
+  });
+
   fetchEvents();
+
+  // Refresh events periodically so all browsers stay in sync
+  setInterval(() => {
+    if (!dom.modal.classList.contains('open')) {
+      fetchEvents();
+    }
+  }, POLL_INTERVAL_MS);
 
   // Check for yearly event resets every minute
   setInterval(checkAndResetYearlyEvents, 60000);
 
-  // Check for resets when page becomes visible again
+  // Refresh events again when the page returns to visibility
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
+      fetchEvents();
       checkAndResetYearlyEvents();
     }
   });

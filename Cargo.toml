@@ -1,0 +1,13 @@
+[package]
+name = "car_maintenance_tracker"
+version = "1.0.0"
+edition = "2021"
+authors = ["Car Maintenance Tracker"]
+description = "Rust backend for the Car Maintenance Tracker web app"
+
+[dependencies]
+axum = { version = "0.8", features = ["http1", "json", "macros", "tokio"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "fs", "net"] }
+tower-http = { version = "0.6", features = ["fs"] }

@@ -44,6 +44,7 @@
               </select>
               <button id="prev-month">‹</button>
               <button id="next-month">›</button>
+              <button id="open-event-modal" class="secondary compact-add">+ Add event</button>
             </div>
           </div>
           <div class="calendar-summary">
@@ -55,47 +56,6 @@
               <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
             </div>
             <div id="calendar-grid" class="calendar-grid"></div>
-          </div>
-
-          <div class="form-panel">
-            <div class="section-title-row">
-              <p class="section-title">Add or edit a car event</p>
-              <span class="hint">All data is saved on the server.</span>
-            </div>
-            <form id="event-form">
-              <div class="form-row">
-                <label for="title">Title</label>
-                <input id="title" name="title" type="text" placeholder="Oil change, inspection..." required />
-              </div>
-              <div class="form-row split">
-                <div>
-                  <label for="date">Date (ISO)</label>
-                  <input id="date" name="date" type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" required />
-                </div>
-                <div>
-                  <label for="cost">Cost (€)</label>
-                  <input id="cost" name="cost" type="number" min="0" step="0.01" value="0" required />
-                </div>
-              </div>
-              <div class="form-row split">
-                <label for="repeat">Repeat</label>
-                <select id="repeat" name="repeat">
-                  <option value="once">One-time</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-                <label for="notes">Notes</label>
-                <input id="notes" name="notes" type="text" placeholder="Location, odometer, vendor..." />
-              </div>
-              <label for="done" class="checkbox-label">
-                <input id="done" name="done" type="checkbox" />
-                <span>Mark as completed</span>
-              </label>
-              <div class="form-actions">
-                <button type="submit" class="primary">Save event</button>
-                <button id="clear-form" type="button" class="secondary">Clear</button>
-              </div>
-              <input id="event-id" type="hidden" />
-            </form>
           </div>
         </section>
 
@@ -111,9 +71,12 @@
                   <label for="timeline-past-months">Past months:</label>
                   <select id="timeline-past-months">
                     <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3" selected>3</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
                     <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="11">11</option>
                     <option value="12">12</option>
                   </select>
                 </div>
@@ -122,7 +85,10 @@
                   <select id="timeline-future-months">
                     <option value="1">1</option>
                     <option value="3">3</option>
-                    <option value="6" selected>6</option>
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="9" selected>9</option>
+                    <option value="11">11</option>
                     <option value="12">12</option>
                     <option value="24">24</option>
                   </select>
@@ -133,13 +99,13 @@
           </section>
 
           <section class="card stats-card">
-            <div class="section-header">
+            <div class="section-header stats-header">
               <div>
                 <p class="section-title">Yearly expense stats</p>
                 <h3 id="stats-year">2024</h3>
               </div>
             </div>
-            <div class="stats-overview">
+            <div class="stats-overview compact-stats-overview">
               <div>
                 <span>Total</span>
                 <strong id="year-total">€0</strong>
@@ -157,6 +123,57 @@
           </section>
         </aside>
       </main>
+
+      <div id="event-modal" class="modal" aria-hidden="true">
+        <div id="event-modal-overlay" class="modal-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+          <div class="modal-header">
+            <div>
+              <p class="section-title">Add or edit a car event</p>
+              <h3 id="event-modal-title">Quick service reminders</h3>
+            </div>
+            <button id="close-event-modal" class="secondary icon-button" aria-label="Close event modal">×</button>
+          </div>
+          <form id="event-form">
+            <div class="form-panel">
+              <div class="form-row">
+                <label for="title">Title</label>
+                <input id="title" type="text" placeholder="Oil change, insurance, etc." required />
+              </div>
+              <div class="form-row">
+                <label for="date">Date</label>
+                <input id="date" type="date" required />
+              </div>
+              <div class="form-row split">
+                <div>
+                  <label for="cost">Cost (€)</label>
+                  <input id="cost" type="number" step="0.01" min="0" placeholder="0.00" />
+                </div>
+                <div>
+                  <label for="repeat">Repeat</label>
+                  <select id="repeat">
+                    <option value="none">One time</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <label for="notes">Notes</label>
+                <textarea id="notes" rows="3" placeholder="Optional details"></textarea>
+              </div>
+              <div class="form-row">
+                <label class="checkbox-label"><input id="done" type="checkbox" /> Mark complete</label>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Save event</button>
+                <button type="button" id="clear-form" class="secondary">Clear</button>
+                <button type="button" id="cancel-event" class="secondary">Cancel</button>
+              </div>
+            </div>
+            <input type="hidden" id="event-id" />
+          </form>
+        </div>
+      </div>
     </div>
     <script src="app.js"></script>
   </body>

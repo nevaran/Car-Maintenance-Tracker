@@ -1,11 +1,19 @@
-FROM node:20-alpine
+FROM rust:1.94-slim AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install --production
+COPY Cargo.toml .
+COPY src ./src
 
-COPY . ./
+RUN cargo build --release
+
+FROM debian:bookworm-slim AS runtime
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/car_maintenance_tracker ./car_maintenance_tracker
+COPY public ./public
+COPY data ./data
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["./car_maintenance_tracker"]
