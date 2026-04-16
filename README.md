@@ -34,6 +34,11 @@ Then open `http://localhost:3000`.
 ```bash
 docker compose up --build
 ```
+or the longer but better way
+```bash
+docker compose build
+docker compose up -d
+```
 
 The `data` directory is mounted so event data persists between runs.
 
