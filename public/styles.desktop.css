@@ -1,0 +1,72 @@
+/* Desktop-specific stylesheet overrides */
+
+.workspace {
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  grid-template-rows: 1fr;
+}
+
+.topbar {
+  padding: 1.5vmin 2vmin;
+}
+
+.calendar-controls {
+  align-items: center;
+}
+
+.modal-content {
+  max-width: 56rem;
+}
+
+.calendar-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 0;
+  container-type: size;
+}
+
+.calendar-cell .day-number {
+  margin-bottom: 0.5rem;
+  align-self: flex-start;
+  width: auto;
+}
+
+.event-dot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  align-items: flex-start;
+}
+
+.event-chip {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  text-align: left;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: var(--calendar-event-chip-size, 0.95rem);
+  max-height: calc(3 * 1.2em);
+}
+
+.event-chip.overflow {
+  color: #ffd965;
+  font-weight: 700;
+}
+
+.calendar-cell::before {
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 50%;
+  max-width: 50%;
+  max-height: 50%;
+  aspect-ratio: 1 / 1;
+}

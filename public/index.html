@@ -6,16 +6,21 @@
     <title>Car Maintenance Tracker</title>
     <link rel="icon" href="favicon.ico" />
     <link rel="stylesheet" href="styles.css" />
+    <script src="device-detect.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <h1>Car Maintenance Tracker</h1>
-          <p>Stay on top of upcoming service, insurance, and expense reminders.</p>
+          <h1 id="app-title">Car Maintenance Tracker</h1>
+          <p id="app-subtitle">Stay on top of upcoming service, insurance, and expense reminders.</p>
         </div>
         <div class="topbar-meta">
           <span id="today-label">ISO Date: --</span>
+          <div id="locale-switcher" class="locale-switcher">
+            <button id="locale-button" type="button" aria-haspopup="listbox" aria-expanded="false">US</button>
+            <div id="locale-menu" class="locale-menu" role="listbox" aria-label="Locale selection"></div>
+          </div>
         </div>
       </header>
 
@@ -23,28 +28,40 @@
         <section class="card calendar-card">
           <div class="section-header">
             <div>
-              <p class="section-title">Monthly calendar</p>
+              <p id="calendar-title" class="section-title">Monthly calendar</p>
               <h2 id="month-label">Loading...</h2>
             </div>
             <div class="calendar-controls">
-              <select id="year-select"></select>
-              <select id="month-select">
-                <option value="0">January</option>
-                <option value="1">February</option>
-                <option value="2">March</option>
-                <option value="3">April</option>
-                <option value="4">May</option>
-                <option value="5">June</option>
-                <option value="6">July</option>
-                <option value="7">August</option>
-                <option value="8">September</option>
-                <option value="9">October</option>
-                <option value="10">November</option>
-                <option value="11">December</option>
-              </select>
-              <button id="prev-month">‹</button>
-              <button id="next-month">›</button>
-              <button id="open-event-modal" class="secondary compact-add">+ Add event</button>
+              <div class="calendar-control-row">
+                <div class="calendar-control-group">
+                  <button id="prev-year">«</button>
+                  <select id="year-select"></select>
+                  <button id="next-year">»</button>
+                </div>
+              </div>
+              <div class="calendar-control-row">
+                <div class="calendar-control-group">
+                  <button id="prev-month">‹</button>
+                  <select id="month-select">
+                    <option value="0">January</option>
+                    <option value="1">February</option>
+                    <option value="2">March</option>
+                    <option value="3">April</option>
+                    <option value="4">May</option>
+                    <option value="5">June</option>
+                    <option value="6">July</option>
+                    <option value="7">August</option>
+                    <option value="8">September</option>
+                    <option value="9">October</option>
+                    <option value="10">November</option>
+                    <option value="11">December</option>
+                  </select>
+                  <button id="next-month">›</button>
+                </div>
+              </div>
+              <div class="calendar-control-row">
+                <button id="open-event-modal" class="secondary compact-add">+ Add event</button>
+              </div>
             </div>
           </div>
           <div class="calendar-summary">
@@ -63,36 +80,8 @@
           <section class="card timeline-card">
             <div class="section-header">
               <div>
-                <p class="section-title">Events timeline</p>
-                <h3 id="timeline-range-label">Past 3 months + next 6 months</h3>
-              </div>
-              <div class="timeline-controls">
-                <div class="control-group">
-                  <label for="timeline-past-months">Past months:</label>
-                  <select id="timeline-past-months">
-                    <option value="1">1</option>
-                    <option value="2" selected>2</option>
-                    <option value="3">3</option>
-                    <option value="6">6</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
-                    <option value="11">11</option>
-                    <option value="12">12</option>
-                  </select>
-                </div>
-                <div class="control-group">
-                  <label for="timeline-future-months">Future months:</label>
-                  <select id="timeline-future-months">
-                    <option value="1">1</option>
-                    <option value="3">3</option>
-                    <option value="6">6</option>
-                    <option value="8">8</option>
-                    <option value="9" selected>9</option>
-                    <option value="11">11</option>
-                    <option value="12">12</option>
-                    <option value="24">24</option>
-                  </select>
-                </div>
+                <p id="timeline-title" class="section-title">Events timeline for the selected calendar year</p>
+                <h3 id="timeline-range-label">Yearly event timeline</h3>
               </div>
             </div>
             <div id="event-list" class="timeline-list"></div>
@@ -101,21 +90,21 @@
           <section class="card stats-card">
             <div class="section-header stats-header">
               <div>
-                <p class="section-title">Yearly expense stats</p>
+                <p id="stats-title" class="section-title">Yearly expense stats</p>
                 <h3 id="stats-year">2024</h3>
               </div>
             </div>
             <div class="stats-overview compact-stats-overview">
               <div>
-                <span>Total</span>
+                <span id="year-total-label">Total</span>
                 <strong id="year-total">€0</strong>
               </div>
               <div>
-                <span>Events</span>
+                <span id="year-events-label">Events</span>
                 <strong id="year-events">0</strong>
               </div>
               <div>
-                <span>Average / month</span>
+                <span id="year-average-label">Average / month</span>
                 <strong id="year-average">€0</strong>
               </div>
             </div>
@@ -129,7 +118,7 @@
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
           <div class="modal-header">
             <div>
-              <p class="section-title">Add or edit a car event</p>
+              <p id="modal-header-title" class="section-title">Add or edit a car event</p>
               <h3 id="event-modal-title">Quick service reminders</h3>
             </div>
             <button id="close-event-modal" class="secondary icon-button" aria-label="Close event modal">×</button>
@@ -165,12 +154,15 @@
                 <label class="checkbox-label"><input id="done" type="checkbox" /> Mark complete</label>
               </div>
               <div class="form-actions">
-                <button type="submit" class="primary">Save event</button>
+                <button type="submit" id="save-event" class="primary">Save event</button>
                 <button type="button" id="clear-form" class="secondary">Clear</button>
                 <button type="button" id="cancel-event" class="secondary">Cancel</button>
               </div>
             </div>
             <input type="hidden" id="event-id" />
+            <input type="hidden" id="event-origin-id" />
+            <input type="hidden" id="event-origin-date" />
+            <input type="hidden" id="event-original-repeat" />
           </form>
         </div>
       </div>

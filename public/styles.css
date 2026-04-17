@@ -22,8 +22,20 @@ body {
 
 button,
 input,
-select {
+select,
+textarea,
+label,
+optgroup,
+option {
   font: inherit;
+}
+
+html {
+  font-size: clamp(10px, 1.4vmin, 18px);
+}
+
+body {
+  font-size: 1rem;
 }
 
 .app-shell {
@@ -52,19 +64,100 @@ select {
 
 .topbar h1 {
   margin: 0;
-  font-size: 2.2vmin;
+  font-size: clamp(1.8rem, 2.8vmin, 3.8rem);
+  line-height: 1.05;
 }
 
 .topbar p {
   margin: 0.5vmin 0 0;
   color: #a3b4d1;
-  font-size: 1.2vmin;
+  font-size: clamp(1rem, 1.6vmin, 1.4rem);
+  line-height: 1.4;
 }
 
 .topbar-meta {
   display: flex;
   align-items: center;
   gap: 1vmin;
+}
+
+.locale-switcher {
+  position: relative;
+}
+
+#locale-button {
+  min-width: 4.5vmin;
+  min-height: 4.5vmin;
+  border: none;
+  border-radius: 1vmin;
+  background: rgba(255,255,255,.06);
+  color: #d8e2ff;
+  cursor: pointer;
+  padding: 0 1vmin;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+#locale-button .flag-icon,
+.locale-menu button .flag-icon {
+  margin-right: 0.6rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+#locale-button span.flag,
+.locale-menu button span.flag {
+  display: none;
+}
+
+#locale-button .locale-short {
+  margin-left: 0.25rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.locale-menu {
+  position: absolute;
+  top: calc(100% + 0.5vmin);
+  right: 0;
+  background: rgba(8, 19, 32, 0.98);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1.2vmin;
+  min-width: 12rem;
+  z-index: 20;
+  display: none;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.4rem 0;
+}
+
+.locale-menu.open {
+  display: flex;
+}
+
+.locale-menu button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #eef5ff;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.locale-menu button:hover,
+.locale-menu button:focus {
+  background: rgba(110, 148, 255, 0.12);
+}
+
+.locale-menu button span.flag {
+  margin-right: 0.6rem;
 }
 
 .topbar-meta span,
@@ -114,11 +207,27 @@ select {
 }
 
 .calendar-controls {
+  display: grid;
+  gap: 0.8vmin;
+  min-width: 0;
+}
+
+.calendar-control-row {
   display: flex;
   align-items: center;
   gap: 0.8vmin;
   flex-wrap: wrap;
+}
+
+.calendar-control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.8vmin;
   min-width: 0;
+}
+
+.calendar-control-row:last-child {
+  justify-content: flex-start;
 }
 
 .calendar-controls select {
@@ -126,20 +235,23 @@ select {
   border-radius: 1.2vmin;
   background: rgba(7, 16, 28, 0.95);
   color: #eef5ff;
-  padding: 0.6vmin 1vmin;
-  font-size: 1.2vmin;
+  padding: 1vmin 1.2vmin;
+  font-size: 1rem;
+  min-width: 11rem;
+  width: 100%;
+  max-width: 14rem;
 }
 
 .calendar-controls button {
-  min-width: 3.5vmin;
-  min-height: 3.5vmin;
+  min-width: 4.5vmin;
+  min-height: 4.5vmin;
   border: none;
   border-radius: 1vmin;
   background: rgba(255,255,255,.06);
   color: #d8e2ff;
   cursor: pointer;
   padding: 0 1vmin;
-  font-size: 1.2vmin;
+  font-size: 1rem;
 }
 
 .calendar-card {
@@ -158,7 +270,11 @@ select {
   align-items: center;
   gap: 1vmin;
   color: #8da6ff;
-  font-size: 1.2vmin;
+  font-size: 1rem;
+}
+
+.calendar-summary span {
+  font-size: inherit;
 }
 
 #month-label {
@@ -213,10 +329,12 @@ select {
   content: '';
   position: absolute;
   top: 0;
-  bottom: 0;
   right: 0;
-  height: 100%;
+  width: 100%;
+  height: auto;
   aspect-ratio: 1 / 1;
+  max-width: 100%;
+  max-height: 100%;
   background-color: #ff8c00;
   mask-image: url('images/calendar-strip.png');
   mask-size: 100% 100%;
@@ -234,8 +352,20 @@ select {
   opacity: 1;
 }
 
-.calendar-cell.has-done-event::before {
+.calendar-cell.has-event.has-due-event::before {
+  background-color: #ff8c00;
+}
+
+.calendar-cell.has-event.has-upcoming-event::before {
+  background-color: rgba(255,255,255,0.95);
+}
+
+.calendar-cell.has-event.has-done-event::before {
   background-color: #4ade80;
+}
+
+.calendar-cell.has-event.has-overdue-event::before {
+  background-color: #dc1d1d;
 }
 
 .calendar-cell:hover {
@@ -259,22 +389,15 @@ select {
   display: flex;
   flex-direction: column;
   gap: 0.4vmin;
-  opacity: 0;
-  max-height: 0;
+  opacity: 1;
+  max-height: none;
   min-height: 0;
   overflow: hidden;
-  transition: opacity .2s ease, max-height .2s ease;
 }
 
 .calendar-cell.has-event .event-dot {
   opacity: 1;
-  max-height: 10vmin; /* Adjusted for responsive limit */
-}
-
-.calendar-cell.no-preview .event-dot,
-.calendar-cell.no-preview:hover .event-dot {
-  opacity: 0;
-  max-height: 0;
+  max-height: none;
 }
 
 .event-chip {
@@ -283,10 +406,16 @@ select {
   margin: 0;
   background: transparent;
   color: #d9e4ff;
-  font-size: 1.1vmin;
-  line-height: 1.2;
+  font-size: clamp(0.75rem, 0.95vw, 1rem);
+  line-height: 1.3;
   white-space: normal;
   overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.event-chip.overflow {
+  font-size: clamp(0.7rem, 0.9vw, 0.95rem);
 }
 
 .event-chip.overflow {
@@ -321,7 +450,7 @@ select {
 }
 
 label {
-  font-size: 1.1vmin;
+  font-size: 1rem;
   color: #a9b5d5;
 }
 
@@ -415,8 +544,8 @@ button.secondary {
 
 .monthly-bars {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6vmin;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8vmin;
   overflow-y: auto; /* This enables the dynamic vertical scrollbar */
   overflow-x: hidden;
   min-height: 0;
@@ -426,7 +555,7 @@ button.secondary {
 
 .timeline-item {
   display: grid;
-  grid-template-columns: 6.5vmin minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 0.8vmin;
   padding: 1vmin;
   border-radius: 1.2vmin;
@@ -435,21 +564,21 @@ button.secondary {
   position: relative;
   align-items: start;
   min-width: 0;
-  font-size: 1.2vmin;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
 .timeline-item time {
   display: block;
   color: #8da6ff;
-  font-size: 1vmin;
+  font-size: 0.95rem;
   margin-bottom: 0.3vmin;
 }
 
 .timeline-item strong {
   display: block;
   margin-bottom: 0.4vmin;
-  font-size: 1.3vmin;
+  font-size: 1.05rem;
 }
 
 .timeline-content {
@@ -463,7 +592,7 @@ button.secondary {
 .timeline-meta {
   display: block;
   color: #c8d5ff;
-  font-size: 1.1vmin;
+  font-size: 1rem;
   line-height: 1.4;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -485,7 +614,7 @@ button.secondary {
   color: #eef5ff;
   cursor: pointer;
   background: rgba(255,255,255,0.05);
-  font-size: 1vmin;
+  font-size: 1rem;
   white-space: nowrap;
 }
 
@@ -512,29 +641,33 @@ button.secondary {
   align-items: center;
   justify-content: center;
   gap: 0.6vmin;
-  min-width: 8vmin;
+  min-width: 9vmin;
+  max-width: 14rem;
   height: 4vmin;
   border: 2px solid rgba(255, 165, 0, 0.4);
   border-radius: 1vmin;
   background: rgba(255, 165, 0, 0.08);
   color: #ff8c00;
   cursor: pointer;
-  font-size: 1.2vmin;
+  font-size: clamp(0.8rem, 1vw, 1rem);
   transition: all 0.25s ease;
   font-weight: 700;
+  white-space: nowrap;
   flex-shrink: 0;
 }
 
 .done-btn-large .button-icon {
   display: inline-flex;
-  width: 1.8vmin;
-  height: 1.8vmin;
+  width: 2rem;
+  height: 2rem;
   align-items: center;
   justify-content: center;
 }
 
 .done-btn-large .button-text {
   line-height: 1;
+  white-space: nowrap;
+  font-size: inherit;
 }
 
 .done-btn-large:hover {
@@ -622,7 +755,7 @@ textarea {
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.05);
   color: #eef5ff;
-  font-size: 1.5vmin;
+  font-size: 1rem;
   cursor: pointer;
 }
 
@@ -697,7 +830,7 @@ textarea {
   align-items: center;
   gap: 0.8vmin;
   color: #a9b5d5;
-  font-size: 1.2vmin;
+  font-size: 1rem;
   cursor: pointer;
   user-select: none;
 }
@@ -725,12 +858,12 @@ textarea {
 
 .stats-header .section-title {
   margin: 0;
-  font-size: 1.2vmin;
+  font-size: 1rem;
 }
 
 .stats-header h3 {
   margin: 0;
-  font-size: 1.2vmin;
+  font-size: 1rem;
   color: #8da6ff;
   font-weight: 500;
 }
@@ -738,7 +871,7 @@ textarea {
 .stats-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6vmin;
+  gap: 0.8vmin;
   margin-bottom: 0.8vmin;
   flex-shrink: 0;
 }
@@ -757,12 +890,12 @@ textarea {
 
 .compact-stats-overview span {
   color: #8da6ff;
-  font-size: 1vmin;
+  font-size: 1rem;
   white-space: nowrap;
 }
 
 .compact-stats-overview strong {
-  font-size: 1.3vmin;
+  font-size: 1.1rem;
   white-space: nowrap;
 }
 
@@ -774,8 +907,9 @@ textarea {
 }
 
 .bar-meta {
-  display: grid;
-  gap: 0.2vmin;
+  display: flex;
+  align-items: center;
+  gap: 0.8vmin;
 }
 
 .bar-track {
@@ -793,8 +927,21 @@ textarea {
 }
 
 .bar-label {
-  font-size: 1.1vmin;
+  font-size: 1rem;
   color: #c8d5ff;
+}
+
+.bar-meta strong {
+  font-size: 1rem;
+  color: #8da6ff;
+}
+
+.bar-meta strong.zero-cost {
+  color: #4ade80;
+}
+
+.bar-meta strong.has-cost {
+  color: #8da6ff;
 }
 
 .timeline-controls {
@@ -813,8 +960,12 @@ textarea {
   min-width: 0;
 }
 
+.control-group select {
+  font-size: 1rem;
+}
+
 .control-group label {
-  font-size: 1.1vmin;
+  font-size: 1rem;
   color: #a9b5d5;
   white-space: nowrap;
 }
@@ -825,7 +976,7 @@ textarea {
   background: rgba(7, 16, 28, 0.95);
   color: #eef5ff;
   padding: 0.4vmin 0.8vmin;
-  font-size: 1.1vmin;
+  font-size: 1rem;
   min-width: 5vmin;
 }
 

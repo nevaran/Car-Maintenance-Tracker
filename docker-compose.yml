@@ -5,4 +5,7 @@ services:
       - '3000:3000'
     volumes:
       - ./data:/app/data
+    environment:
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1
     restart: unless-stopped

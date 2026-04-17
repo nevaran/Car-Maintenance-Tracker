@@ -48,6 +48,9 @@ The `data` directory is mounted so event data persists between runs.
 - Calendar view with clickable days
 - Add, edit, delete events
 - One-time or yearly repeating events
-- Side panel showing the past 6 months and next 6 months
+- Built-in UI localization with English and Bulgarian support
+- Top-bar locale selector for switching languages on the fly
+- Device-aware desktop/mobile stylesheet loading through `public/device-detect.js`
+- Side panel showing the year's events
 - Yearly expense statistics in EUR
 - ISO date format everywhere
