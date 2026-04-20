@@ -1,2 +1,37 @@
+# Build artifacts (will rebuild in container)
+target/
+Cargo.lock
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Development
+.vscode/
 .DS_Store
+*.swp
+*.swo
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+
+# Environment (use build args or runtime config instead)
+.env
+.env.example
+
+# Legacy/Unnecessary
+node_modules/
+npm-debug.log
+
+# Runtime data (don't bake into image)
 data/events.json
+data/users.json
+
+# IDE
+.idea/

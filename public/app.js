@@ -74,6 +74,29 @@ function pad(value) {
   return String(value).padStart(2, '0');
 }
 
+// Toast notification system
+function showToast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+
+  container.appendChild(toast);
+
+  // Trigger animation
+  setTimeout(() => toast.classList.add('show'), 10);
+
+  // Auto-hide after duration
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300); // Wait for fade out animation
+  }, duration);
+}
+
 function formatISO(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
@@ -2681,6 +2704,19 @@ function showEventModal({ reset = false } = {}) {
   }
   dom.modal.classList.add('open');
   dom.modal.setAttribute('aria-hidden', 'false');
+  
+  // Double-check date input has correct ISO format value after modal is shown
+  if (reset) {
+    setTimeout(() => {
+      const now = new Date();
+      const expectedISO = now.getFullYear() + '-' + 
+                         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(now.getDate()).padStart(2, '0');
+      if (dom.date.value !== expectedISO) {
+        dom.date.value = expectedISO;
+      }
+    }, 10);
+  }
 }
 
 function hideEventModal() {
@@ -3077,7 +3113,14 @@ function resetForm() {
   dom.eventOriginId.value = '';
   dom.eventOriginDate.value = '';
   dom.eventOriginalRepeat.value = '';
-  dom.date.value = formatISO(new Date());
+  
+  // Set current date in ISO format (YYYY-MM-DD)
+  const now = new Date();
+  const isoDateString = now.getFullYear() + '-' + 
+                       String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                       String(now.getDate()).padStart(2, '0');
+  dom.date.value = isoDateString;
+  
   dom.done.checked = false;
   dom.title.readOnly = false;
   dom.repeat.disabled = false;
@@ -3091,11 +3134,23 @@ dom.form.addEventListener('submit', async (event) => {
   const isOverrideCreation = !dom.eventId.value && originId;
   const repeatChanged = dom.eventId.value && repeatValue !== originalRepeat;
   const titleValue = dom.title.value.trim();
-  const dateValue = dom.date.value;
+  let dateValue = dom.date.value;
   const costValue = parseFloat(dom.cost.value.replace(/[^0-9.]/g, '')) || 0;
 
   if (!dateValue) return;
   if (!originId && !titleValue) return;
+
+  // Ensure date is in ISO format (YYYY-MM-DD)
+  if (dateValue && !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    // If not in ISO format, try to parse and reformat
+    const parsedDate = new Date(dateValue);
+    if (!isNaN(parsedDate.getTime())) {
+      dateValue = formatISO(parsedDate);
+    } else {
+      showToast('Invalid date format. Please use YYYY-MM-DD format.', 'error');
+      return;
+    }
+  }
 
   const payload = {
     date: dateValue,
@@ -3146,7 +3201,9 @@ function loadEventForEdit(id, originId, occurrenceDate, isGenerated, isOverride)
     : (isGenerated ? 'yearly' : (sourceEvent.repeat === 'yearly' ? 'yearly' : 'none'));
 
   dom.title.value = originEvent?.title || event?.title || '';
-  dom.date.value = isGenerated ? occurrenceDate : formatISO(new Date(event?.date || sourceEvent.date));
+  const eventDate = isGenerated ? occurrenceDate : formatISO(new Date(event?.date || sourceEvent.date));
+  // Ensure date is in ISO format
+  dom.date.value = /^\d{4}-\d{2}-\d{2}$/.test(eventDate) ? eventDate : formatISO(new Date(eventDate));
   dom.cost.value = Number((actualOverride ? event : sourceEvent)?.cost || 0).toFixed(2);
   dom.repeat.value = repeatValue;
   dom.notes.value = (actualOverride ? event : sourceEvent)?.notes || '';
@@ -3187,6 +3244,41 @@ if (window.visualViewport) {
 }
 
 dom.clearForm.addEventListener('click', resetForm);
+
+// Auto-format date input to ISO format as user types
+dom.date.addEventListener('input', (e) => {
+  let value = e.target.value.replace(/[^\d-]/g, ''); // Remove non-digit and non-hyphen chars
+  
+  // Auto-insert hyphens while typing
+  if (value.length === 4 && !value.includes('-')) {
+    value = value + '-';
+  } else if (value.length === 7 && (value.match(/-/g) || []).length === 1) {
+    value = value + '-';
+  } else if (value.length > 10) {
+    // Keep only first 10 chars (YYYY-MM-DD format)
+    value = value.substring(0, 10);
+  }
+  
+  e.target.value = value;
+});
+
+// Validate and normalize date on blur
+dom.date.addEventListener('blur', (e) => {
+  let value = e.target.value.trim();
+  
+  if (!value) return;
+  
+  // Check if already in ISO format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return; // Already correct format
+  }
+  
+  // Try to parse various date formats and convert to ISO
+  const date = new Date(value);
+  if (!isNaN(date.getTime())) {
+    e.target.value = formatISO(date);
+  }
+});
 
 dom.prevYear.addEventListener('click', () => {
   state.currentDate.setFullYear(state.currentDate.getFullYear() - 1);
@@ -3415,7 +3507,7 @@ dom.loginForm.addEventListener('submit', async (event) => {
       hideLoginModal();
       initializeApp();
     } else {
-      alert(gettext('invalidCredentials'));
+      showToast(gettext('invalidCredentials'), 'error');
     }
   } catch (error) {
     console.error('Login error:', error);
@@ -3439,7 +3531,7 @@ dom.setupForm.addEventListener('submit', async (event) => {
       hideSetupModal();
       initializeApp();
     } else {
-      alert(gettext('setupFailed'));
+      showToast(gettext('setupFailed'), 'error');
     }
   } catch (error) {
     console.error('Setup error:', error);
@@ -3459,10 +3551,10 @@ dom.changePasswordForm.addEventListener('submit', async (event) => {
       credentials: 'include'
     });
     if (response.ok) {
-      alert(gettext('passwordUpdated'));
+      showToast(gettext('passwordUpdated'), 'success');
       hideChangePasswordModal();
     } else {
-      alert(gettext('passwordUpdateFailed'));
+      showToast(gettext('passwordUpdateFailed'), 'error');
     }
   } catch (error) {
     console.error('Change password error:', error);
@@ -3483,10 +3575,10 @@ dom.createUserForm.addEventListener('submit', async (event) => {
       credentials: 'include'
     });
     if (response.ok) {
-      alert(gettext('userCreated'));
+      showToast(gettext('userCreated'), 'success');
       hideCreateUserModal();
     } else {
-      alert(gettext('createUserFailed'));
+      showToast(gettext('createUserFailed'), 'error');
     }
   } catch (error) {
     console.error('Create user error:', error);

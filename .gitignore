@@ -1,4 +1,14 @@
-node_modules
-.DS_Store
-npm-debug.log
+# Build artifacts (keep Cargo.lock for reproducible builds in binary projects)
+target/
+
+# Environment
 .env
+.env.local
+
+# OS
+.DS_Store
+.vscode/
+
+# Node (legacy, can remove if not needed)
+node_modules
+npm-debug.log
