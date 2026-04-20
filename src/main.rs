@@ -1,22 +1,26 @@
-use axum::extract::{Json, Path};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::{delete, get, post, put};
+use axum::extract::{ConnectInfo, Json, Path};
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post, put};
 use axum::Router;
+use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::{Arc, OnceLock};
+use tokio::sync::Mutex;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::OnceLock;
-use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::net::TcpListener;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use axum::serve;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
-use tracing::{debug, error, info};
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing::{debug, error, info, warn};
+use tracing_subscriber::EnvFilter;
 
 const DATA_PATH: &str = "data/events.json";
+const USERS_PATH: &str = "data/users.json";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Event {
@@ -33,6 +37,18 @@ struct Event {
     created_year: Option<u16>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct User {
+    id: String,
+    username: String,
+    password_hash: String,
+    role: String,
+    settings: HashMap<String, String>,
+}
+
+type ActiveUsers = Arc<Mutex<HashMap<String, (User, std::net::IpAddr, SystemTime)>>>;
+static ACTIVE_USERS: OnceLock<ActiveUsers> = OnceLock::new();
+
 #[derive(Debug, Deserialize)]
 struct InputEvent {
     id: Option<String>,
@@ -44,6 +60,71 @@ struct InputEvent {
     done: Option<bool>,
     origin_id: Option<String>,
     created_year: Option<u16>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LoginPayload {
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CreateUserPayload {
+    username: String,
+    password: String,
+    role: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChangePasswordPayload {
+    old_password: String,
+    new_password: String,
+}
+
+async fn load_users() -> Result<Vec<User>, Box<dyn std::error::Error>> {
+    let content = tokio::fs::read_to_string(USERS_PATH).await.unwrap_or_else(|_| "[]".to_string());
+    debug!("Loaded users content: {}", content);
+    let users: Vec<User> = serde_json::from_str(&content)?;
+    info!("Loaded {} users", users.len());
+    Ok(users)
+}
+
+async fn save_users(users: &Vec<User>) -> Result<(), Box<dyn std::error::Error>> {
+    let json = serde_json::to_string_pretty(users)?;
+    debug!("Saving users JSON: {}", json);
+    tokio::fs::create_dir_all("data").await?;
+    tokio::fs::write(USERS_PATH, json).await?;
+    info!("Saved {} users to {}", users.len(), USERS_PATH);
+    Ok(())
+}
+
+async fn get_current_user(headers: &HeaderMap) -> Option<User> {
+    if let Some(cookie) = headers.get("cookie") {
+        let cookie_str = cookie.to_str().ok()?;
+        debug!("Cookie string: {}", cookie_str);
+        for part in cookie_str.split(';') {
+            let part = part.trim();
+            if let Some(user_id) = part.strip_prefix("user_id=") {
+                debug!("Extracted user_id: {}", user_id);
+                let users = load_users().await.ok()?;
+                let user = users.into_iter().find(|u| u.id == user_id);
+                if let Some(ref u) = user {
+                    let mut active = ACTIVE_USERS.get().unwrap().lock().await;
+                    if let Some(entry) = active.get_mut(&u.id) {
+                        entry.2 = SystemTime::now();
+                    }
+                }
+                if user.is_some() {
+                    debug!("Found user: {}", user.as_ref().unwrap().username);
+                } else {
+                    debug!("User not found for id: {}", user_id);
+                }
+                return user;
+            }
+        }
+    }
+    debug!("No cookie or user_id found");
+    None
 }
 
 #[tokio::main]
@@ -60,6 +141,18 @@ async fn main() {
             "/api/events/{id}",
             put(update_event).delete(delete_event),
         )
+        .route("/api/setup", get(check_setup).post(setup_admin))
+        .route("/api/login", post(login))
+        .route("/api/logout", get(logout))
+        .route("/api/current_user", get(current_user))
+        .route("/api/active_users", get(active_users))
+        .route("/api/users", post(create_user))
+        .route("/api/settings", put(update_settings))
+        .route("/api/change_password", put(change_password));
+
+    ACTIVE_USERS.set(Arc::new(Mutex::new(HashMap::new()))).unwrap();
+
+    let app = app
         .fallback_service(
             ServeDir::new("public")
                 .append_index_html_on_directories(true)
@@ -74,13 +167,8 @@ async fn main() {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
     info!("starting Car Maintenance Tracker on {}", addr);
-    let listener = TcpListener::bind(addr)
-        .await
-        .expect("failed to bind");
-
-    axum::serve(listener, app)
-        .await
-        .expect("server failed");
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
 }
 
 async fn get_events() -> impl IntoResponse {
@@ -97,8 +185,12 @@ async fn get_events() -> impl IntoResponse {
     }
 }
 
-async fn create_event(Json(input): Json<InputEvent>) -> impl IntoResponse {
+async fn create_event(headers: HeaderMap, Json(input): Json<InputEvent>) -> impl IntoResponse {
     debug!(?input, "handling create_event");
+    let user = get_current_user(&headers).await;
+    if user.as_ref().map(|u| u.role != "admin").unwrap_or(true) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Admin required"}))).into_response();
+    }
     let date = match input.date {
         Some(date) if !date.trim().is_empty() => date,
         _ => {
@@ -158,10 +250,15 @@ async fn create_event(Json(input): Json<InputEvent>) -> impl IntoResponse {
 }
 
 async fn update_event(
+    headers: HeaderMap,
     Path(id): Path<String>,
     Json(input): Json<InputEvent>,
 ) -> impl IntoResponse {
     debug!(event_id = %id, ?input, "handling update_event");
+    let user = get_current_user(&headers).await;
+    if user.as_ref().map(|u| u.role != "admin").unwrap_or(true) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Admin required"}))).into_response();
+    }
     let mut events = match load_events().await {
         Ok(events) => events,
         Err(_) => Vec::new(),
@@ -211,8 +308,12 @@ async fn update_event(
     (StatusCode::OK, Json(response)).into_response()
 }
 
-async fn delete_event(Path(id): Path<String>) -> impl IntoResponse {
+async fn delete_event(headers: HeaderMap, Path(id): Path<String>) -> impl IntoResponse {
     info!(event_id = %id, "handling delete_event");
+    let user = get_current_user(&headers).await;
+    if user.as_ref().map(|u| u.role != "admin").unwrap_or(true) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Admin required"}))).into_response();
+    }
     let mut events = match load_events().await {
         Ok(events) => events,
         Err(_) => Vec::new(),
@@ -282,4 +383,146 @@ fn generate_id() -> String {
         .as_millis();
     let id = counter.fetch_add(1, Ordering::Relaxed);
     format!("{}-{}", timestamp, id)
+}
+
+async fn check_setup() -> impl IntoResponse {
+    let users = load_users().await.unwrap_or_default();
+    debug!("Check setup: {} users exist", users.len());
+    Json(json!({"needs_setup": users.is_empty()}))
+}
+
+async fn setup_admin(Json(payload): Json<CreateUserPayload>) -> Response {
+    info!("Setting up admin user: {}", payload.username);
+    let users = load_users().await.unwrap_or_default();
+    if !users.is_empty() {
+        warn!("Setup attempted but users already exist");
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "Users already exist"}))).into_response();
+    }
+    let hash = hash(payload.password, DEFAULT_COST).unwrap();
+    debug!("Hashed password for user {}", payload.username);
+    let user = User {
+        id: generate_id(),
+        username: payload.username.clone(),
+        password_hash: hash,
+        role: "admin".to_string(),
+        settings: HashMap::new(),
+    };
+    let users = vec![user.clone()];
+    save_users(&users).await.unwrap();
+    let cookie = format!("user_id={}; Path=/; HttpOnly; SameSite=Strict", user.id);
+    info!("Admin user {} created successfully", payload.username);
+    (StatusCode::CREATED, [(header::SET_COOKIE, HeaderValue::from_str(&cookie).unwrap())], Json(user)).into_response()
+}
+
+async fn login(ConnectInfo(addr): ConnectInfo<SocketAddr>, Json(payload): Json<LoginPayload>) -> Response {
+    debug!("Login attempt for user: {} from {}", payload.username, addr.ip());
+    let users = load_users().await.unwrap_or_default();
+    let user = users.iter().find(|u| u.username == payload.username);
+    if let Some(user) = user {
+        if verify(&payload.password, &user.password_hash).unwrap_or(false) {
+            let cookie = format!("user_id={}; Path=/; HttpOnly; SameSite=Strict", user.id);
+            {
+                let mut active = ACTIVE_USERS.get().unwrap().lock().await;
+                active.insert(user.id.clone(), (user.clone(), addr.ip(), SystemTime::now()));
+            }
+            info!("User {} logged in successfully from {}", payload.username, addr.ip());
+            return (StatusCode::OK, [(header::SET_COOKIE, HeaderValue::from_str(&cookie).unwrap())], Json(user.clone())).into_response();
+        } else {
+            warn!("Invalid password for user {} from {}", payload.username, addr.ip());
+        }
+    } else {
+        warn!("User {} not found from {}", payload.username, addr.ip());
+    }
+    (StatusCode::UNAUTHORIZED, Json(json!({"error": "Invalid credentials"}))).into_response()
+}
+
+async fn current_user(headers: HeaderMap) -> Response {
+    if let Some(user) = get_current_user(&headers).await {
+        debug!("Current user: {}", user.username);
+        (StatusCode::OK, Json(user)).into_response()
+    } else {
+        debug!("No current user found");
+        (StatusCode::UNAUTHORIZED, Json(json!({"error": "Not logged in"}))).into_response()
+    }
+}
+
+async fn logout(headers: HeaderMap, ConnectInfo(addr): ConnectInfo<SocketAddr>) -> Response {
+    if let Some(user) = get_current_user(&headers).await {
+        let mut active = ACTIVE_USERS.get().unwrap().lock().await;
+        active.remove(&user.id);
+        info!("User {} logged out from {}", user.username, addr.ip());
+    }
+    (StatusCode::OK, [(header::SET_COOKIE, "user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; HttpOnly; SameSite=Strict")]).into_response()
+}
+
+async fn active_users(headers: HeaderMap) -> Response {
+    let user = get_current_user(&headers).await;
+    if user.as_ref().map(|u| u.role != "admin").unwrap_or(true) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Admin required"}))).into_response();
+    }
+    let active = ACTIVE_USERS.get().unwrap().lock().await;
+    let now = SystemTime::now();
+    let list: Vec<_> = active.values()
+        .filter(|(_, _, last_seen)| now.duration_since(*last_seen).unwrap_or(Duration::from_secs(0)) < Duration::from_secs(300)) // 5 minutes
+        .map(|(u, ip, _)| json!({"username": &u.username, "ip": ip.to_string()}))
+        .collect();
+    (StatusCode::OK, Json(list)).into_response()
+}
+
+async fn create_user(headers: HeaderMap, Json(payload): Json<CreateUserPayload>) -> Response {
+    info!("Creating user: {} with role: {}", payload.username, payload.role);
+    let current_user = get_current_user(&headers).await;
+    if current_user.as_ref().map(|u| u.role != "admin").unwrap_or(true) {
+        warn!("Unauthorized attempt to create user by non-admin");
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Admin required"}))).into_response();
+    }
+    if payload.role != "admin" && payload.role != "readonly" {
+        warn!("Invalid role: {}", payload.role);
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "Invalid role"}))).into_response();
+    }
+    let mut users = load_users().await.unwrap_or_default();
+    let hash = hash(payload.password, DEFAULT_COST).unwrap();
+    let user = User {
+        id: generate_id(),
+        username: payload.username.clone(),
+        password_hash: hash,
+        role: payload.role.clone(),
+        settings: HashMap::new(),
+    };
+    users.push(user.clone());
+    save_users(&users).await.unwrap();
+    info!("User {} created successfully", payload.username);
+    (StatusCode::CREATED, Json(user)).into_response()
+}
+
+async fn update_settings(headers: HeaderMap, Json(settings): Json<HashMap<String, String>>) -> Response {
+    let mut user = get_current_user(&headers).await;
+    if let Some(ref mut u) = user {
+        u.settings = settings;
+        let mut users = load_users().await.unwrap_or_default();
+        if let Some(idx) = users.iter().position(|us| us.id == u.id) {
+            users[idx] = u.clone();
+            save_users(&users).await.unwrap();
+            return (StatusCode::OK, Json(u.clone())).into_response();
+        }
+    }
+    (StatusCode::UNAUTHORIZED, Json(json!({"error": "Not logged in"}))).into_response()
+}
+
+async fn change_password(headers: HeaderMap, Json(payload): Json<ChangePasswordPayload>) -> Response {
+    let mut user = get_current_user(&headers).await;
+    if let Some(ref mut u) = user {
+        if verify(&payload.old_password, &u.password_hash).unwrap_or(false) {
+            u.password_hash = hash(payload.new_password, DEFAULT_COST).unwrap();
+            let mut users = load_users().await.unwrap_or_default();
+            if let Some(idx) = users.iter().position(|us| us.id == u.id) {
+                users[idx] = u.clone();
+                save_users(&users).await.unwrap();
+                return (StatusCode::OK, Json(json!({"success": true}))).into_response();
+            }
+        } else {
+            return (StatusCode::BAD_REQUEST, Json(json!({"error": "Wrong old password"}))).into_response();
+        }
+    }
+    (StatusCode::UNAUTHORIZED, Json(json!({"error": "Not logged in"}))).into_response()
 }

@@ -21,6 +21,10 @@
             <button id="locale-button" type="button" aria-haspopup="listbox" aria-expanded="false">US</button>
             <div id="locale-menu" class="locale-menu" role="listbox" aria-label="Locale selection"></div>
           </div>
+          <div id="user-switcher" class="user-switcher">
+            <img id="user-button" class="avatar-button" src="" alt="User menu" aria-haspopup="true" aria-expanded="false" style="display:none" />
+            <div id="user-menu" class="user-menu" role="menu" aria-label="User menu"></div>
+          </div>
         </div>
       </header>
 
@@ -163,6 +167,120 @@
             <input type="hidden" id="event-origin-id" />
             <input type="hidden" id="event-origin-date" />
             <input type="hidden" id="event-original-repeat" />
+          </form>
+        </div>
+      </div>
+
+      <div id="login-modal" class="modal" aria-hidden="true">
+        <div id="login-modal-overlay" class="modal-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+          <div class="modal-header">
+            <div>
+              <p class="section-title">Login</p>
+              <h3 id="login-modal-title">Sign in to continue</h3>
+            </div>
+          </div>
+          <form id="login-form" autocomplete="on">
+            <div class="form-panel">
+              <div class="form-row">
+                <label for="login-username">Username</label>
+                <input id="login-username" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-row">
+                <label for="login-password">Password</label>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Login</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="setup-modal" class="modal" aria-hidden="true">
+        <div id="setup-modal-overlay" class="modal-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="setup-modal-title">
+          <div class="modal-header">
+            <div>
+              <p class="section-title">Setup Admin</p>
+              <h3 id="setup-modal-title">Create the first administrator</h3>
+            </div>
+          </div>
+          <form id="setup-form" autocomplete="off">
+            <div class="form-panel">
+              <div class="form-row">
+                <label for="setup-username">Admin username</label>
+                <input id="setup-username" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-row">
+                <label for="setup-password">Password</label>
+                <input id="setup-password" name="password" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Create admin</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="change-password-modal" class="modal" aria-hidden="true">
+        <div id="change-password-modal-overlay" class="modal-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="change-password-modal-title">
+          <div class="modal-header">
+            <div>
+              <p class="section-title">Change password</p>
+              <h3 id="change-password-modal-title">Update your credentials</h3>
+            </div>
+          </div>
+          <form id="change-password-form" autocomplete="off">
+            <div class="form-panel">
+              <div class="form-row">
+                <label for="old-password">Current password</label>
+                <input id="old-password" name="old-password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-row">
+                <label for="new-password">New password</label>
+                <input id="new-password" name="new-password" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Save password</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="create-user-modal" class="modal" aria-hidden="true">
+        <div id="create-user-modal-overlay" class="modal-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="create-user-modal-title">
+          <div class="modal-header">
+            <div>
+              <p class="section-title">Create user</p>
+              <h3 id="create-user-modal-title">Add a read-only user</h3>
+            </div>
+          </div>
+          <form id="create-user-form" autocomplete="off">
+            <div class="form-panel">
+              <div class="form-row">
+                <label for="create-user-username">Username</label>
+                <input id="create-user-username" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-row">
+                <label for="create-user-password">Password</label>
+                <input id="create-user-password" name="password" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+              </div>
+              <div class="form-row">
+                <label for="create-user-role">Role</label>
+                <select id="create-user-role">
+                  <option value="readonly">Read-only</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary">Create user</button>
+              </div>
+            </div>
           </form>
         </div>
       </div>

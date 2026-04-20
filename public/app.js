@@ -3,6 +3,7 @@ const POLL_INTERVAL_MS = 30000;
 const state = {
   events: [],
   currentDate: new Date(),
+  currentUser: null,
 };
 
 const dom = {
@@ -44,6 +45,29 @@ const dom = {
   localeButton: document.getElementById('locale-button'),
   localeMenu: document.getElementById('locale-menu'),
   localeSwitcher: document.getElementById('locale-switcher'),
+  userButton: document.getElementById('user-button'),
+  userMenu: document.getElementById('user-menu'),
+  loginModal: document.getElementById('login-modal'),
+  loginOverlay: document.getElementById('login-modal-overlay'),
+  loginForm: document.getElementById('login-form'),
+  loginUsername: document.getElementById('login-username'),
+  loginPassword: document.getElementById('login-password'),
+  setupModal: document.getElementById('setup-modal'),
+  setupOverlay: document.getElementById('setup-modal-overlay'),
+  setupForm: document.getElementById('setup-form'),
+  setupUsername: document.getElementById('setup-username'),
+  setupPassword: document.getElementById('setup-password'),
+  changePasswordModal: document.getElementById('change-password-modal'),
+  changePasswordOverlay: document.getElementById('change-password-modal-overlay'),
+  changePasswordForm: document.getElementById('change-password-form'),
+  oldPassword: document.getElementById('old-password'),
+  newPassword: document.getElementById('new-password'),
+  createUserModal: document.getElementById('create-user-modal'),
+  createUserOverlay: document.getElementById('create-user-modal-overlay'),
+  createUserForm: document.getElementById('create-user-form'),
+  createUserUsername: document.getElementById('create-user-username'),
+  createUserPassword: document.getElementById('create-user-password'),
+  createUserRole: document.getElementById('create-user-role'),
 };
 
 function pad(value) {
@@ -71,8 +95,7 @@ const LOCALES = [
 ];
 
 const localeBundles = {};
-const savedLocale = localStorage.getItem('locale');
-let selectedLocale = LOCALES.some((locale) => locale.code === savedLocale) ? savedLocale : 'en-US';
+let selectedLocale = 'en-US';
 
 async function loadLocales() {
   for (const locale of LOCALES) {
@@ -86,6 +109,12 @@ async function loadLocales() {
     } catch {
       localeBundles[locale.code] = {};
     }
+  }
+}
+
+function loadUserSettings() {
+  if (state.currentUser && state.currentUser.settings.locale) {
+    selectedLocale = state.currentUser.settings.locale;
   }
 }
 
@@ -121,15 +150,22 @@ function updateLocaleMenu() {
   });
 }
 
-function setLocale(code) {
+async function setLocale(code) {
   const locale = LOCALES.find((entry) => entry.code === code) ? code : 'en-US';
   selectedLocale = locale;
-  localStorage.setItem('locale', selectedLocale);
   document.documentElement.lang = selectedLocale === 'bg' ? 'bg' : 'en';
   updateLocaleMenu();
   applyLocaleTexts();
   renderApp();
   closeLocaleMenu();
+  if (state.currentUser) {
+    await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale: selectedLocale }),
+      credentials: 'include'
+    });
+  }
 }
 
 function toggleLocaleMenu() {
@@ -181,6 +217,10 @@ function applyLocaleTexts() {
   document.querySelectorAll('.weekday-bar span').forEach((span, index) => {
     span.textContent = locale.weekdays?.[index] || span.textContent;
   });
+
+  if (state.currentUser) {
+    initializeUserUI();
+  }
 }
 
 function getLocalizedText(key, fallbacks = []) {
@@ -2724,7 +2764,7 @@ function getEventOccurrences(event, startDate, endDate) {
   const baseDate = parseISODate(event.date);
   if (event.repeat === 'yearly') {
     const createdYear = event.created_year || baseDate.getFullYear();
-    const firstYear = Math.max(createdYear, start.getFullYear());
+    const firstYear = Math.max(baseDate.getFullYear(), start.getFullYear());
     for (let year = firstYear; year <= end.getFullYear(); year += 1) {
       const candidate = new Date(year, baseDate.getMonth(), baseDate.getDate());
       if (candidate < start || candidate > end) {
@@ -2826,10 +2866,12 @@ function renderCalendar() {
       cell.title = 'No events';
     }
     cell.addEventListener('click', () => {
-      resetForm();
-      dom.date.value = formatISO(date);
-      showEventModal();
-      dom.title.focus();
+      if (state.currentUser.role === 'admin') {
+        resetForm();
+        dom.date.value = formatISO(date);
+        showEventModal();
+        dom.title.focus();
+      }
     });
     dom.calendarGrid.appendChild(cell);
   });
@@ -2868,6 +2910,7 @@ function buildTimelineItems() {
   dom.timelineRangeLabel.textContent = gettext('timelineRangeLabel');
 
   dom.eventList.innerHTML = occurrences.map((evt) => {
+    const canModify = state.currentUser?.role === 'admin';
     const isPast = isEventPast(evt.dateObj);
     const isWithinLastWeek = isEventWithinLastWeek(evt.dateObj);
     const isDone = evt.done === true;
@@ -2879,10 +2922,14 @@ function buildTimelineItems() {
     } else if (isWithinLastWeek) {
       stripClass = 'strip-upcoming';
     }
+    const actionButtons = canModify ? `
+        <button class="edit" data-id="${evt.id}" data-origin-id="${evt.origin_id || evt.parentId || ''}" data-generated="${evt.isGenerated ? 'true' : 'false'}" data-is-override="${evt.origin_id ? 'true' : 'false'}" data-occurrence-date="${evt.occurrence}">${gettext('edit')}</button>
+        <button class="delete" data-id="${evt.id}">${gettext('delete')}</button>
+      ` : '';
     return `
       <div class="timeline-item${evt.done ? ' done' : ''}${isPast ? ' is-past' : ''}">
         <div class="timeline-strip ${stripClass}"></div>
-        <button class="done-btn-large${evt.done ? ' completed' : ''}"
+        ${canModify ? `<button class="done-btn-large${evt.done ? ' completed' : ''}"
           data-id="${evt.id}"
           data-parent-id="${evt.origin_id || evt.parentId || ''}"
           data-origin-id="${evt.origin_id || evt.parentId || ''}"
@@ -2893,15 +2940,14 @@ function buildTimelineItems() {
           title="${evt.done ? gettext('markAsPending') : gettext('markAsDone')}"
           aria-label="${evt.done ? gettext('markAsPending') : gettext('markAsCompleted')}">
           ${evt.done ? `<span class="button-icon">✓</span><span class="button-text">${gettext('doneLabel')}</span>` : `<span class="button-icon">○</span><span class="button-text">${gettext('pendingLabel')}</span>`}
-        </button>
+        </button>` : ''}
         <div class="timeline-content">
           <time datetime="${evt.occurrence}">${evt.occurrence}</time>
           <strong>${evt.title}</strong>
           <span class="timeline-meta">${evt.repeat === 'yearly' ? gettext('yearlyReminder') : gettext('oneTimeReminder')} • €${Number(evt.cost).toFixed(2)} • ${evt.notes || gettext('noNotes')}</span>
         </div>
         <div class="item-actions">
-          <button class="edit" data-id="${evt.id}" data-origin-id="${evt.origin_id || evt.parentId || ''}" data-generated="${evt.isGenerated ? 'true' : 'false'}" data-is-override="${evt.origin_id ? 'true' : 'false'}" data-occurrence-date="${evt.occurrence}">${gettext('edit')}</button>
-          <button class="delete" data-id="${evt.id}">${gettext('delete')}</button>
+          ${actionButtons}
         </div>
       </div>
     `;
@@ -2970,7 +3016,7 @@ function renderStats() {
 }
 
 async function fetchEvents() {
-  const response = await fetch('/api/events');
+  const response = await fetch('/api/events', { credentials: 'include' });
   state.events = await response.json();
   renderApp();
   // Check for yearly event resets after loading events
@@ -2984,12 +3030,13 @@ async function saveEvent(event) {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(event),
+    credentials: 'include'
   });
   await fetchEvents();
 }
 
 async function removeEvent(id) {
-  await fetch(`/api/events/${id}`, { method: 'DELETE' });
+  await fetch(`/api/events/${id}`, { method: 'DELETE', credentials: 'include' });
   await fetchEvents();
 }
 
@@ -3065,12 +3112,13 @@ dom.form.addEventListener('submit', async (event) => {
   }
 
   if (repeatChanged && dom.eventId.value) {
-    const deleteResponse = await fetch(`/api/events/${dom.eventId.value}`, { method: 'DELETE' });
+    const deleteResponse = await fetch(`/api/events/${dom.eventId.value}`, { method: 'DELETE', credentials: 'include' });
     if (deleteResponse.ok) {
       await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        credentials: 'include'
       });
       await fetchEvents();
     }
@@ -3172,8 +3220,29 @@ dom.yearSelect.addEventListener('change', () => {
   renderApp();
 });
 
+async function checkLogin() {
+  try {
+    const setupResponse = await fetch('/api/setup');
+    const setup = await setupResponse.json();
+    if (setup.needs_setup) {
+      showSetupModal();
+    } else {
+      const userResponse = await fetch('/api/current_user', { credentials: 'include' });
+      if (userResponse.ok) {
+        state.currentUser = await userResponse.json();
+        loadUserSettings();
+        initializeApp();
+      } else {
+        showLoginModal();
+      }
+    }
+  } catch (error) {
+    console.error('Error checking login:', error);
+    showLoginModal();
+  }
+}
 
-window.addEventListener('DOMContentLoaded', async () => {
+function initializeApp() {
   const currentYear = new Date().getFullYear();
   for (let year = currentYear - 5; year <= currentYear + 5; year++) {
     const option = document.createElement('option');
@@ -3183,6 +3252,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   dom.date.value = formatISO(new Date());
   initializeLocaleUI();
+  initializeUserUI();
+  updateLocaleMenu();
+  applyLocaleTexts();
+  if (state.currentUser.role === 'admin') {
+    dom.openEventModal.style.display = 'block';
+  } else {
+    dom.openEventModal.style.display = 'none';
+  }
   dom.openEventModal.addEventListener('click', () => showEventModal({ reset: true }));
   dom.closeEventModal.addEventListener('click', hideEventModal);
   dom.cancelEventButton.addEventListener('click', hideEventModal);
@@ -3193,15 +3270,242 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
   dom.modalOverlay.addEventListener('click', hideEventModal);
+  fetchEvents();
+  renderApp();
+}
+
+function fetchActiveUsers() {
+  const div = document.getElementById('active-users');
+  if (!div) return;
+  div.innerHTML = `<h4>${gettext('activeUsers')}</h4><div class="loading">${gettext('loading')}</div>`;
+  fetch('/api/active_users', { credentials: 'include' })
+    .then(r => r.json())
+    .then(list => {
+      div.innerHTML = `<h4>${gettext('activeUsers')}</h4>` + list.map(u => `<div>${u.username} (${gettext('fromIP')} ${u.ip})</div>`).join('');
+    })
+    .catch(err => {
+      console.error('Failed to load active users:', err);
+      div.innerHTML = `<h4>${gettext('activeUsers')}</h4><div>${gettext('errorLoading')}</div>`;
+    });
+}
+
+function initializeUserUI() {
+  dom.userButton.src = state.currentUser.role === 'admin' ? '/images/avatars/AdminUser.png' : '/images/avatars/DefaultUser.png';
+  dom.userButton.style.display = 'block';
+  dom.userButton.addEventListener('click', toggleUserMenu);
+  document.addEventListener('click', (event) => {
+    if (!dom.userButton.contains(event.target) && !dom.userMenu.contains(event.target)) {
+      closeUserMenu();
+    }
+  });
+  dom.userMenu.innerHTML = `
+    <div class="current-user">${state.currentUser.username}</div>
+    <button id="logout-button">${gettext('logout')}</button>
+    <button id="change-password-button">${gettext('changePassword')}</button>
+    ${state.currentUser.role === 'admin' ? `<button id="create-user-button">${gettext('createUser')}</button>` : ''}
+    ${state.currentUser.role === 'admin' ? `<div class="active-users" id="active-users"><h4>${gettext('activeUsers')}</h4><div class="loading">${gettext('loading')}</div></div>` : ''}
+  `;
+  document.getElementById('logout-button').addEventListener('click', logout);
+  document.getElementById('change-password-button').addEventListener('click', () => showChangePasswordModal());
+  if (state.currentUser.role === 'admin') {
+    document.getElementById('create-user-button').addEventListener('click', () => showCreateUserModal());
+    fetchActiveUsers();
+  }
+}
+
+function toggleUserMenu() {
+  const isOpen = dom.userMenu.classList.toggle('open');
+  dom.userButton.setAttribute('aria-expanded', String(isOpen));
+  if (isOpen && state.currentUser.role === 'admin') {
+    fetchActiveUsers();
+  }
+}
+
+function closeUserMenu() {
+  dom.userMenu.classList.remove('open');
+  dom.userButton.setAttribute('aria-expanded', 'false');
+}
+
+async function logout() {
+  await fetch('/api/logout');
+  state.currentUser = null;
+  location.reload();
+}
+
+function showLoginModal() {
+  document.querySelector('#login-modal .section-title').textContent = gettext('loginTitle');
+  document.querySelector('#login-modal-title').textContent = gettext('signInToContinue');
+  document.querySelector('label[for="login-username"]').textContent = gettext('username');
+  document.querySelector('label[for="login-password"]').textContent = gettext('password');
+  document.querySelector('#login-form button[type="submit"]').textContent = gettext('loginButton');
+  dom.loginModal.classList.add('open');
+  dom.loginModal.setAttribute('aria-hidden', 'false');
+  dom.loginUsername.focus();
+}
+
+function hideLoginModal() {
+  dom.loginModal.classList.remove('open');
+  dom.loginModal.setAttribute('aria-hidden', 'true');
+}
+
+function showSetupModal() {
+  document.querySelector('#setup-modal .section-title').textContent = gettext('setupAdminTitle');
+  document.querySelector('#setup-modal-title').textContent = gettext('createFirstAdmin');
+  document.querySelector('label[for="setup-username"]').textContent = gettext('adminUsername');
+  document.querySelector('label[for="setup-password"]').textContent = gettext('password');
+  document.querySelector('#setup-form button[type="submit"]').textContent = gettext('createAdminButton');
+  dom.setupModal.classList.add('open');
+  dom.setupModal.setAttribute('aria-hidden', 'false');
+  dom.setupUsername.focus();
+}
+
+function hideSetupModal() {
+  dom.setupModal.classList.remove('open');
+  dom.setupModal.setAttribute('aria-hidden', 'true');
+}
+
+function showChangePasswordModal() {
+  document.querySelector('#change-password-modal .section-title').textContent = gettext('changePasswordTitle');
+  document.querySelector('#change-password-modal-title').textContent = gettext('updateCredentials');
+  document.querySelector('label[for="old-password"]').textContent = gettext('currentPassword');
+  document.querySelector('label[for="new-password"]').textContent = gettext('newPassword');
+  document.querySelector('#change-password-form button[type="submit"]').textContent = gettext('savePasswordButton');
+  dom.changePasswordModal.classList.add('open');
+  dom.changePasswordModal.setAttribute('aria-hidden', 'false');
+  dom.oldPassword.focus();
+}
+
+function hideChangePasswordModal() {
+  dom.changePasswordModal.classList.remove('open');
+  dom.changePasswordModal.setAttribute('aria-hidden', 'true');
+}
+
+function showCreateUserModal() {
+  document.querySelector('#create-user-modal .section-title').textContent = gettext('createUserTitle');
+  document.querySelector('#create-user-modal-title').textContent = gettext('addReadOnlyUser');
+  document.querySelector('label[for="create-user-username"]').textContent = gettext('username');
+  document.querySelector('label[for="create-user-password"]').textContent = gettext('password');
+  document.querySelector('label[for="create-user-role"]').textContent = gettext('role');
+  document.querySelector('#create-user-role option[value="readonly"]').textContent = gettext('readOnly');
+  document.querySelector('#create-user-form button[type="submit"]').textContent = gettext('createUserButton');
+  dom.createUserModal.classList.add('open');
+  dom.createUserModal.setAttribute('aria-hidden', 'false');
+  dom.createUserUsername.focus();
+}
+
+function hideCreateUserModal() {
+  dom.createUserModal.classList.remove('open');
+  dom.createUserModal.setAttribute('aria-hidden', 'true');
+}
+
+dom.loginForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const username = dom.loginUsername.value.trim();
+  const password = dom.loginPassword.value;
+  if (!username || !password) return;
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (response.ok) {
+      state.currentUser = await response.json();
+      loadUserSettings();
+      hideLoginModal();
+      initializeApp();
+    } else {
+      alert(gettext('invalidCredentials'));
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+  }
+});
+
+dom.setupForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const username = dom.setupUsername.value.trim();
+  const password = dom.setupPassword.value;
+  if (!username || !password) return;
+  try {
+    const response = await fetch('/api/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role: 'admin' }),
+    });
+    if (response.ok) {
+      state.currentUser = await response.json();
+      loadUserSettings();
+      hideSetupModal();
+      initializeApp();
+    } else {
+      alert(gettext('setupFailed'));
+    }
+  } catch (error) {
+    console.error('Setup error:', error);
+  }
+});
+
+dom.changePasswordForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const oldPassword = dom.oldPassword.value;
+  const newPassword = dom.newPassword.value;
+  if (!oldPassword || !newPassword) return;
+  try {
+    const response = await fetch('/api/change_password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+      credentials: 'include'
+    });
+    if (response.ok) {
+      alert(gettext('passwordUpdated'));
+      hideChangePasswordModal();
+    } else {
+      alert(gettext('passwordUpdateFailed'));
+    }
+  } catch (error) {
+    console.error('Change password error:', error);
+  }
+});
+
+dom.createUserForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const username = dom.createUserUsername.value.trim();
+  const password = dom.createUserPassword.value;
+  const role = dom.createUserRole.value;
+  if (!username || !password) return;
+  try {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role }),
+      credentials: 'include'
+    });
+    if (response.ok) {
+      alert(gettext('userCreated'));
+      hideCreateUserModal();
+    } else {
+      alert(gettext('createUserFailed'));
+    }
+  } catch (error) {
+    console.error('Create user error:', error);
+  }
+});
+
+dom.loginOverlay.addEventListener('click', hideLoginModal);
+dom.setupOverlay.addEventListener('click', hideSetupModal);
+dom.changePasswordOverlay.addEventListener('click', hideChangePasswordModal);
+dom.createUserOverlay.addEventListener('click', hideCreateUserModal);
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadLocales();
+  await checkLogin();
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && dom.modal.classList.contains('open')) {
       hideEventModal();
     }
   });
-
-  await loadLocales();
-  setLocale(selectedLocale);
-  fetchEvents();
 
   // Refresh events periodically so all browsers stay in sync
   setInterval(() => {
@@ -3221,3 +3525,4 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
+

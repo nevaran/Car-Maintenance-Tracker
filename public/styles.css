@@ -160,6 +160,83 @@ body {
   margin-right: 0.6rem;
 }
 
+.user-switcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1rem;
+}
+
+.avatar-button {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.user-menu {
+  position: absolute;
+  top: calc(100% + 0.5vmin);
+  right: 0;
+  background: rgba(8, 19, 32, 0.98);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1.2vmin;
+  min-width: 14rem;
+  z-index: 20;
+  display: none;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.4rem 0;
+}
+
+.user-menu.open {
+  display: flex;
+}
+
+.user-menu button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #eef5ff;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.user-menu button:hover,
+.user-menu button:focus {
+  background: rgba(110, 148, 255, 0.12);
+}
+
+.current-user {
+  padding: 0.9rem 1rem;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: #eef5ff;
+}
+
+.active-users {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.active-users h4 {
+  margin: 0 1rem 0.5rem;
+  font-size: 0.9rem;
+  color: #d8e2ff;
+}
+
+.active-users div {
+  padding: 0.3rem 1rem;
+  font-size: 0.85rem;
+  color: #eef5ff;
+}
+
 .topbar-meta span,
 .topbar-meta button {
   color: #d8e2ff;

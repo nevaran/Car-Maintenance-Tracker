@@ -1,4 +1,4 @@
-FROM rust:1.94-slim AS builder
+FROM rust:1.94-alpine AS builder
 
 WORKDIR /app
 
@@ -7,7 +7,9 @@ COPY src ./src
 
 RUN cargo build --release
 
-FROM debian:bookworm-slim AS runtime
+FROM alpine:latest AS runtime
+
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 

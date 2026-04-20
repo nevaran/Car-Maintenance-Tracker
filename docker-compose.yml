@@ -8,4 +8,7 @@ services:
     environment:
       - RUST_LOG=debug
       - RUST_BACKTRACE=1
+      - UID
+      - GID
+    user: "${UID}:${GID}"
     restart: unless-stopped
