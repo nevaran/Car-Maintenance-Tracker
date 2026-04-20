@@ -62,14 +62,14 @@ Then open `http://localhost:3000`.
 ## Run with Docker Compose
 
 ```bash
-docker compose up --build
-```
-
-Or, if you prefer separate build/start steps:
-
-```bash
 docker compose build
 docker compose up -d
+```
+
+## Clean docker builder cache if a lot of builds were made
+
+```bash
+docker builder prune
 ```
 
 The `data` directory is mounted so event and user data persist between restarts.
