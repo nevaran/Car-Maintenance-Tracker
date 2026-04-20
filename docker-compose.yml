@@ -1,10 +1,6 @@
 services:
   app:
-    build:
-      context: .
-      args:
-        APP_UID: ${UID:-1000}
-        APP_GID: ${GID:-1000}
+    build: .
     ports:
       - '3000:3000'
     volumes:
@@ -14,6 +10,5 @@ services:
     environment:
       - RUST_LOG=debug
       - RUST_BACKTRACE=1
-      - UID=${UID:-1000}
-      - GID=${GID:-1000}
+    user: "${UID:-1000}:${GID:-1000}"
     restart: unless-stopped
