@@ -1,4 +1,4 @@
-use axum::extract::{ConnectInfo, Json, Path};
+use axum::extract::{Json, Path};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
@@ -96,6 +96,25 @@ async fn save_users(users: &Vec<User>) -> Result<(), Box<dyn std::error::Error>>
     tokio::fs::write(USERS_PATH, json).await?;
     info!("Saved {} users to {}", users.len(), USERS_PATH);
     Ok(())
+}
+
+fn get_real_ip(headers: &HeaderMap) -> std::net::IpAddr {
+    if let Some(real_ip) = headers.get("x-real-ip") {
+        if let Ok(ip_str) = real_ip.to_str() {
+            if let Ok(ip) = ip_str.parse() {
+                return ip;
+            }
+        }
+    }
+    if let Some(forwarded_for) = headers.get("x-forwarded-for") {
+        if let Ok(ip_str) = forwarded_for.to_str() {
+            let first_ip = ip_str.split(',').next().unwrap_or("").trim();
+            if let Ok(ip) = first_ip.parse() {
+                return ip;
+            }
+        }
+    }
+    "127.0.0.1".parse().unwrap_or_else(|_| std::net::IpAddr::from([127, 0, 0, 1]))
 }
 
 async fn get_current_user(headers: &HeaderMap) -> Option<User> {
@@ -414,8 +433,9 @@ async fn setup_admin(Json(payload): Json<CreateUserPayload>) -> Response {
     (StatusCode::CREATED, [(header::SET_COOKIE, HeaderValue::from_str(&cookie).unwrap())], Json(user)).into_response()
 }
 
-async fn login(ConnectInfo(addr): ConnectInfo<SocketAddr>, Json(payload): Json<LoginPayload>) -> Response {
-    debug!("Login attempt for user: {} from {}", payload.username, addr.ip());
+async fn login(headers: HeaderMap, Json(payload): Json<LoginPayload>) -> Response {
+    let client_ip = get_real_ip(&headers);
+    debug!("Login attempt for user: {} from {}", payload.username, client_ip);
     let users = load_users().await.unwrap_or_default();
     let user = users.iter().find(|u| u.username == payload.username);
     if let Some(user) = user {
@@ -423,15 +443,15 @@ async fn login(ConnectInfo(addr): ConnectInfo<SocketAddr>, Json(payload): Json<L
             let cookie = format!("user_id={}; Path=/; HttpOnly; SameSite=Strict", user.id);
             {
                 let mut active = ACTIVE_USERS.get().unwrap().lock().await;
-                active.insert(user.id.clone(), (user.clone(), addr.ip(), SystemTime::now()));
+                active.insert(user.id.clone(), (user.clone(), client_ip, SystemTime::now()));
             }
-            info!("User {} logged in successfully from {}", payload.username, addr.ip());
+            info!("User {} logged in successfully from {}", payload.username, client_ip);
             return (StatusCode::OK, [(header::SET_COOKIE, HeaderValue::from_str(&cookie).unwrap())], Json(user.clone())).into_response();
         } else {
-            warn!("Invalid password for user {} from {}", payload.username, addr.ip());
+            warn!("Invalid password for user {} from {}", payload.username, client_ip);
         }
     } else {
-        warn!("User {} not found from {}", payload.username, addr.ip());
+        warn!("User {} not found from {}", payload.username, client_ip);
     }
     (StatusCode::UNAUTHORIZED, Json(json!({"error": "Invalid credentials"}))).into_response()
 }
@@ -446,11 +466,12 @@ async fn current_user(headers: HeaderMap) -> Response {
     }
 }
 
-async fn logout(headers: HeaderMap, ConnectInfo(addr): ConnectInfo<SocketAddr>) -> Response {
+async fn logout(headers: HeaderMap) -> Response {
+    let client_ip = get_real_ip(&headers);
     if let Some(user) = get_current_user(&headers).await {
         let mut active = ACTIVE_USERS.get().unwrap().lock().await;
         active.remove(&user.id);
-        info!("User {} logged out from {}", user.username, addr.ip());
+        info!("User {} logged out from {}", user.username, client_ip);
     }
     (StatusCode::OK, [(header::SET_COOKIE, "user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; HttpOnly; SameSite=Strict")]).into_response()
 }
