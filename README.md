@@ -12,7 +12,7 @@ This project includes:
 - User credentials stored in `data/users.json` after initial admin setup
 - Support for one-time and yearly recurring events
 - Event completion tracking and calendar markers
-- Locale switcher for English and Bulgarian labels
+- Locale switcher for different languages
 - Admin setup, login, logout, change password, and create read-only users
 
 ## Prerequisites
