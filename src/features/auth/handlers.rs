@@ -9,10 +9,13 @@ use axum::{
 };
 use std::sync::Arc;
 use tracing::debug;
+use governor::{Quota, RateLimiter, state::{InMemoryState, NotKeyed}, clock::DefaultClock};
+use std::num::NonZeroU32;
 
 pub struct AuthHandlers {
     service: Arc<AuthService>,
     ip_extractor: Arc<dyn crate::domain::IpExtractor>,
+    login_limiter: RateLimiter<NotKeyed, InMemoryState, DefaultClock>,
 }
 
 impl AuthHandlers {
@@ -20,6 +23,7 @@ impl AuthHandlers {
         Self {
             service,
             ip_extractor,
+            login_limiter: RateLimiter::direct(Quota::per_minute(NonZeroU32::new(5).unwrap())),
         }
     }
 
@@ -51,6 +55,13 @@ impl AuthHandlers {
         headers: HeaderMap,
         Json(payload): Json<LoginRequest>,
     ) -> Response {
+        // Check rate limit (Priority 2 Security Fix: Prevent brute-force attacks)
+        if self.login_limiter.check().is_err() {
+            return crate::error::AppError::TooManyRequests(
+                "Too many login attempts. Please try again later.".to_string()
+            ).into_response();
+        }
+
         let ip = self.ip_extractor.extract(&headers);
 
         let cmd = LoginCommand {

@@ -1,4 +1,4 @@
-use crate::domain::{User, UserRole};
+use crate::domain::User;
 use serde::{Deserialize, Serialize};
 
 /// Query: Get current user from cookie

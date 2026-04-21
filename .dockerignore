@@ -1,6 +1,7 @@
 # Build artifacts (will rebuild in container)
 target/
 Cargo.lock
+CVEs-and-Security/
 
 # Version control
 .git/

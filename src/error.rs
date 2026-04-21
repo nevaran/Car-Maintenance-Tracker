@@ -15,6 +15,7 @@ pub enum AppError {
     BadRequest(String),
     Conflict(String),
     InternalError(String),
+    TooManyRequests(String),
 }
 
 impl fmt::Display for AppError {
@@ -26,6 +27,7 @@ impl fmt::Display for AppError {
             Self::BadRequest(msg) => write!(f, "Bad request: {}", msg),
             Self::Conflict(msg) => write!(f, "Conflict: {}", msg),
             Self::InternalError(msg) => write!(f, "Internal error: {}", msg),
+            Self::TooManyRequests(msg) => write!(f, "Too many requests: {}", msg),
         }
     }
 }
@@ -41,6 +43,7 @@ impl IntoResponse for AppError {
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             Self::Conflict(msg) => (StatusCode::CONFLICT, msg),
             Self::InternalError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            Self::TooManyRequests(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
         };
 
         (status, Json(json!({"error": message}))).into_response()

@@ -4,6 +4,8 @@ use std::net::IpAddr;
 use std::time::SystemTime;
 use chrono::NaiveDate;
 
+use crate::error::Result;
+
 /// Domain model for User
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct User {
@@ -71,6 +73,27 @@ pub struct ActiveSession {
     pub last_seen: SystemTime,
 }
 
+/// Audit log entry for security events
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AuditLog {
+    pub timestamp: SystemTime,
+    pub action: String,
+    pub user_id: Option<String>,
+    pub username: Option<String>,
+    pub ip: IpAddr,
+    pub result: String, // "success" or "failure"
+    pub details: serde_json::Value,
+}
+
+/// Login attempt tracking for account lockout
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LoginAttempt {
+    pub username: String,
+    pub failed_count: u32,
+    pub last_attempt: SystemTime,
+    pub locked_until: Option<SystemTime>,
+}
+
 /// ID generator trait
 pub trait IdGenerator: Send + Sync {
     fn generate(&self) -> String;
@@ -79,4 +102,11 @@ pub trait IdGenerator: Send + Sync {
 /// IP extraction from headers
 pub trait IpExtractor: Send + Sync {
     fn extract(&self, headers: &axum::http::HeaderMap) -> IpAddr;
+}
+
+/// Audit repository trait for logging security events
+#[async_trait::async_trait]
+pub trait AuditRepository: Send + Sync {
+    async fn log(&self, log: AuditLog) -> Result<()>;
+    async fn load_recent(&self, limit: usize) -> Result<Vec<AuditLog>>;
 }

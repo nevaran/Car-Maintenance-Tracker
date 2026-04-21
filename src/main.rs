@@ -5,10 +5,12 @@ mod infra;
 
 use axum::{
     extract::Path,
-    response::IntoResponse,
+    http::{HeaderMap, HeaderName},
     routing::{get, post, put},
-    Json, Router,
+    Router,
 };
+use tower_http::set_header::{SetResponseHeader, SetResponseHeaderLayer};
+use axum::http::HeaderValue;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
@@ -17,7 +19,7 @@ use tracing_subscriber::EnvFilter;
 use domain::IpExtractor;
 use features::{AuthHandlers, AuthService, EventHandlers, EventService, HealthHandlers};
 use infra::{
-    FileEventRepository, FileUserRepository, ProxyAwareIpExtractor, TimestampIdGenerator,
+    FileEventRepository, FileUserRepository, FileAuditRepository, ProxyAwareIpExtractor, TimestampIdGenerator,
 };
 
 #[tokio::main]
@@ -35,16 +37,17 @@ async fn main() {
     // Initialize infrastructure
     let user_repo = Arc::new(FileUserRepository::new("data/users.json"));
     let event_repo = Arc::new(FileEventRepository::new("data/events.json"));
+    let audit_repo = Arc::new(FileAuditRepository::new("data/audit.json"));
     let id_gen = Arc::new(TimestampIdGenerator);
     let ip_extractor = Arc::new(ProxyAwareIpExtractor) as Arc<dyn IpExtractor>;
 
     // Initialize services
-    let auth_service = Arc::new(AuthService::new(user_repo.clone(), id_gen.clone()));
+    let auth_service = Arc::new(AuthService::new(user_repo.clone(), audit_repo.clone(), id_gen.clone()));
     let event_service = Arc::new(EventService::new(event_repo, id_gen));
 
     // Initialize handlers  
-    let auth = Arc::new(AuthHandlers::new(auth_service, ip_extractor));
-    let events = Arc::new(EventHandlers::new(event_service));
+    let auth = Arc::new(AuthHandlers::new(auth_service.clone(), ip_extractor));
+    let events = Arc::new(EventHandlers::new(event_service, auth_service.clone()));
     let health = Arc::new(HealthHandlers::new(user_repo));
 
     // Build router
@@ -127,24 +130,24 @@ async fn main() {
         )
         .route(
             "/api/events",
-            get(move || {
+            get(move |headers: HeaderMap| {
                 let e = events_clone1.clone();
-                async move { e.list_events().await }
+                async move { e.list_events(headers).await }
             })
-            .post(move |body| {
+            .post(move |headers: HeaderMap, body| {
                 let e = events_clone2.clone();
-                async move { e.create_event(body).await }
+                async move { e.create_event(headers, body).await }
             }),
         )
         .route(
             "/api/events/{id}",
-            put(move |Path(id), body| {
+            put(move |headers: HeaderMap, Path(id), body| {
                 let e = events_clone3.clone();
-                async move { e.update_event(Path(id), body).await }
+                async move { e.update_event(headers, Path(id), body).await }
             })
-            .delete(move |Path(id)| {
+            .delete(move |headers: HeaderMap, Path(id)| {
                 let e = events_clone4.clone();
-                async move { e.delete_event(Path(id)).await }
+                async move { e.delete_event(headers, Path(id)).await }
             }),
         )
         .fallback_service(
@@ -152,7 +155,24 @@ async fn main() {
                 .append_index_html_on_directories(true)
                 .fallback(tower_http::services::ServeFile::new("public/index.html")),
         )
-        .layer(tower_http::trace::TraceLayer::new_for_http());
+        .layer(tower_http::trace::TraceLayer::new_for_http())
+        // Security headers
+        .layer(SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("x-content-type-options"),
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("x-frame-options"),
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("x-xss-protection"),
+            HeaderValue::from_static("1; mode=block"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("referrer-policy"),
+            HeaderValue::from_static("strict-origin-when-cross-origin"),
+        ));
 
     let port = std::env::var("PORT")
         .ok()

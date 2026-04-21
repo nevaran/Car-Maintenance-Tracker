@@ -3,6 +3,7 @@ use crate::error::Result;
 use std::path::Path;
 use tokio::fs;
 use tracing::{debug, error};
+use parking_lot::Mutex;
 
 /// User repository trait
 #[async_trait::async_trait]
@@ -16,12 +17,14 @@ pub trait UserRepository: Send + Sync {
 /// File-based user repository implementation
 pub struct FileUserRepository {
     path: String,
+    file_lock: Mutex<()>,
 }
 
 impl FileUserRepository {
     pub fn new(path: impl Into<String>) -> Self {
         Self {
             path: path.into(),
+            file_lock: Mutex::new(()),
         }
     }
 }
@@ -45,6 +48,13 @@ impl UserRepository for FileUserRepository {
     }
 
     async fn save_all(&self, users: &[User]) -> Result<()> {
+        // Serialize JSON while holding the lock to ensure atomicity
+        let json = {
+            let _guard = self.file_lock.lock();
+            serde_json::to_string_pretty(users)
+                .map_err(|_| crate::error::AppError::InternalError("Failed to serialize users".to_string()))?
+        }; // Lock is released here
+        
         let path = Path::new(&self.path);
         
         if let Some(parent) = path.parent() {
@@ -52,9 +62,6 @@ impl UserRepository for FileUserRepository {
                 .await
                 .map_err(|_| crate::error::AppError::InternalError("Failed to create data directory".to_string()))?;
         }
-
-        let json = serde_json::to_string_pretty(users)
-            .map_err(|_| crate::error::AppError::InternalError("Failed to serialize users".to_string()))?;
 
         debug!("Saving users JSON: {} bytes", json.len());
 

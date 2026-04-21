@@ -1,4 +1,3 @@
-# Build artifacts (keep Cargo.lock for reproducible builds in binary projects)
 target/
 
 # Environment

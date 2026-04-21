@@ -1,5 +1,5 @@
 use crate::domain::Event;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Query: Get all events
 #[derive(Debug, Clone)]
