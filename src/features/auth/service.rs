@@ -4,6 +4,7 @@ use crate::domain::{ActiveSession, User, UserRole, AuditRepository, AuditLog, Lo
 use crate::error::{AppError, Result};
 use crate::infra::UserRepository;
 use bcrypt::{hash, verify, DEFAULT_COST};
+use chrono::Utc;
 use std::sync::Arc;
 use std::time::{SystemTime, Duration};
 use tokio::sync::Mutex;
@@ -20,6 +21,21 @@ pub struct AuthService {
 }
 
 impl AuthService {
+    const SESSION_COOKIE_MAX_AGE: i64 = 30 * 24 * 60 * 60; // 30 days
+
+    pub fn build_session_cookie(user_id: &str) -> String {
+        let expires = (Utc::now() + chrono::Duration::seconds(Self::SESSION_COOKIE_MAX_AGE))
+            .format("%a, %d %b %Y %H:%M:%S GMT")
+            .to_string();
+
+        format!(
+            "user_id={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}; Expires={}",
+            user_id,
+            Self::SESSION_COOKIE_MAX_AGE,
+            expires
+        )
+    }
+
     pub fn new(
         user_repo: Arc<dyn UserRepository>,
         audit_repo: Arc<dyn AuditRepository>,
@@ -183,7 +199,7 @@ impl AuthService {
             );
         }
 
-        let cookie = format!("user_id={}; Path=/; HttpOnly; SameSite=Strict", user.id);
+        let cookie = Self::build_session_cookie(&user.id);
         info!("User {} logged in successfully from {}", cmd.username, cmd.ip);
         
         Ok(LoginCommandResult { user, cookie })

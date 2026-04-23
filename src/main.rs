@@ -9,7 +9,7 @@ use axum::{
     routing::{get, post, put},
     Router,
 };
-use tower_http::set_header::{SetResponseHeader, SetResponseHeaderLayer};
+use tower_http::set_header::SetResponseHeaderLayer;
 use axum::http::HeaderValue;
 use std::net::SocketAddr;
 use std::sync::Arc;

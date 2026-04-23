@@ -3,7 +3,7 @@ use super::queries::*;
 use super::service::EventService;
 use axum::{
     extract::Path,
-    http::{HeaderMap, StatusCode},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -43,13 +43,24 @@ impl EventHandlers {
         }
     }
 
+    fn refresh_session_cookie(&self, user_id: &str, mut response: Response) -> Response {
+        response.headers_mut().append(
+            header::SET_COOKIE,
+            HeaderValue::from_str(&crate::features::auth::service::AuthService::build_session_cookie(user_id)).unwrap(),
+        );
+        response
+    }
+
     pub async fn list_events(&self, headers: HeaderMap) -> Response {
         // Priority 1 Security Fix: Require authentication for list_events
         match self.authenticate_request(&headers).await {
-            Ok(_user) => {
+            Ok(user) => {
                 let query = ListEventsQuery;
                 match self.service.list_events(query).await {
-                    Ok(result) => (StatusCode::OK, Json(result.events)).into_response(),
+                    Ok(result) => self.refresh_session_cookie(
+                        &user.id,
+                        (StatusCode::OK, Json(result.events)).into_response(),
+                    ),
                     Err(e) => e.into_response(),
                 }
             }
@@ -137,7 +148,10 @@ impl EventHandlers {
         };
 
         match self.service.create_event(cmd).await {
-            Ok(result) => (StatusCode::CREATED, Json(result.event)).into_response(),
+            Ok(result) => self.refresh_session_cookie(
+                &user.id,
+                (StatusCode::CREATED, Json(result.event)).into_response(),
+            ),
             Err(e) => e.into_response(),
         }
     }
@@ -203,7 +217,10 @@ impl EventHandlers {
         };
 
         match self.service.update_event(cmd).await {
-            Ok(result) => (StatusCode::OK, Json(result.event)).into_response(),
+            Ok(result) => self.refresh_session_cookie(
+                &user.id,
+                (StatusCode::OK, Json(result.event)).into_response(),
+            ),
             Err(e) => e.into_response(),
         }
     }
@@ -224,7 +241,10 @@ impl EventHandlers {
 
         let cmd = DeleteEventCommand { id };
         match self.service.delete_event(cmd).await {
-            Ok(_) => (StatusCode::OK, Json(serde_json::json!({"success": true}))).into_response(),
+            Ok(_) => self.refresh_session_cookie(
+                &user.id,
+                (StatusCode::OK, Json(serde_json::json!({"success": true}))).into_response(),
+            ),
             Err(e) => e.into_response(),
         }
     }

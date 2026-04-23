@@ -4,7 +4,7 @@ use super::service::AuthService;
 use crate::error::Result;
 use axum::{
     extract::Json,
-    http::{header, HeaderMap, HeaderValue},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
 };
 use std::sync::Arc;
@@ -27,6 +27,16 @@ impl AuthHandlers {
         }
     }
 
+    fn session_cookie_header(&self, user_id: &str) -> HeaderValue {
+        HeaderValue::from_str(&AuthService::build_session_cookie(user_id)).unwrap()
+    }
+
+    fn refresh_cookie_response<T: IntoResponse>(&self, user_id: &str, response: T) -> Response {
+        let mut response = response.into_response();
+        response.headers_mut().append(header::SET_COOKIE, self.session_cookie_header(user_id));
+        response
+    }
+
     pub async fn register_admin(
         &self,
         Json(payload): Json<CreateUserRequest>,
@@ -38,10 +48,9 @@ impl AuthHandlers {
 
         match self.service.register_admin(cmd).await {
             Ok(result) => {
-                let cookie = format!("user_id={}; Path=/; HttpOnly; SameSite=Strict", result.user.id);
                 (
-                    axum::http::StatusCode::CREATED,
-                    [(header::SET_COOKIE, HeaderValue::from_str(&cookie).unwrap())],
+                    StatusCode::CREATED,
+                    [(header::SET_COOKIE, self.session_cookie_header(&result.user.id))],
                     Json(result.user),
                 )
                     .into_response()
@@ -72,7 +81,7 @@ impl AuthHandlers {
 
         match self.service.login(cmd).await {
             Ok(result) => (
-                axum::http::StatusCode::OK,
+                StatusCode::OK,
                 [(header::SET_COOKIE, HeaderValue::from_str(&result.cookie).unwrap())],
                 Json(result.user),
             )
@@ -90,10 +99,10 @@ impl AuthHandlers {
         }
 
         (
-            axum::http::StatusCode::OK,
+            StatusCode::OK,
             [(
                 header::SET_COOKIE,
-                "user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; HttpOnly; SameSite=Strict",
+                "user_id=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Strict",
             )],
         )
             .into_response()
@@ -103,7 +112,9 @@ impl AuthHandlers {
         match self.get_current_user_internal(&headers).await {
             Ok(user) => {
                 debug!("Current user: {}", user.username);
-                (axum::http::StatusCode::OK, Json(user)).into_response()
+                let user_id = user.id.clone();
+                let response = (StatusCode::OK, Json(user)).into_response();
+                self.refresh_cookie_response(&user_id, response)
             }
             Err(e) => e.into_response(),
         }
@@ -128,7 +139,10 @@ impl AuthHandlers {
                 };
 
                 match self.service.create_user(cmd).await {
-                    Ok(result) => (axum::http::StatusCode::CREATED, Json(result.user)).into_response(),
+                    Ok(result) => self.refresh_cookie_response(
+                        &admin.id,
+                        (StatusCode::CREATED, Json(result.user)),
+                    ),
                     Err(e) => e.into_response(),
                 }
             }
@@ -143,18 +157,18 @@ impl AuthHandlers {
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
             Ok(user) => {
+                let user_id = user.id.clone();
                 let cmd = ChangePasswordCommand {
-                    user_id: user.id,
+                    user_id: user_id.clone(),
                     old_password: payload.old_password,
                     new_password: payload.new_password,
                 };
 
                 match self.service.change_password(cmd).await {
-                    Ok(_) => (
-                        axum::http::StatusCode::OK,
-                        Json(serde_json::json!({"success": true})),
-                    )
-                        .into_response(),
+                    Ok(_) => self.refresh_cookie_response(
+                        &user_id,
+                        (StatusCode::OK, Json(serde_json::json!({"success": true}))),
+                    ),
                     Err(e) => e.into_response(),
                 }
             }
@@ -169,13 +183,17 @@ impl AuthHandlers {
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
             Ok(user) => {
+                let user_id = user.id.clone();
                 let cmd = UpdateSettingsCommand {
-                    user_id: user.id,
+                    user_id: user_id.clone(),
                     settings: payload.settings,
                 };
 
                 match self.service.update_settings(cmd).await {
-                    Ok(result) => (axum::http::StatusCode::OK, Json(result.user)).into_response(),
+                    Ok(result) => self.refresh_cookie_response(
+                        &user_id,
+                        (StatusCode::OK, Json(result.user)),
+                    ),
                     Err(e) => e.into_response(),
                 }
             }
@@ -192,7 +210,10 @@ impl AuthHandlers {
 
                 let query = ListActiveSessionsQuery;
                 match self.service.list_active_sessions(query).await {
-                    Ok(result) => (axum::http::StatusCode::OK, Json(result.sessions)).into_response(),
+                    Ok(result) => self.refresh_cookie_response(
+                        &user.id,
+                        (StatusCode::OK, Json(result.sessions)),
+                    ),
                     Err(e) => e.into_response(),
                 }
             }

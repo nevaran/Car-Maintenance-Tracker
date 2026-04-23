@@ -115,6 +115,7 @@ const LOCALES = [
   { code: 'bg', flag: 'bg.svg', short: 'BG', label: 'Български (BG)' },
   { code: 'ja-JP', flag: 'jp.svg', short: 'JP', label: '日本語 (JP)' },
   { code: 'th-TH', flag: 'th.svg', short: 'TH', label: 'ไทย (TH)' },
+  { code: 'pirate', flag: 'arrg.png', short: 'ARRG', label: 'Pirate (ARRG)' },
 ];
 
 const localeBundles = {};
@@ -185,7 +186,7 @@ async function setLocale(code) {
     await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locale: selectedLocale }),
+      body: JSON.stringify({ settings: { locale: selectedLocale } }),
       credentials: 'include'
     });
   }
@@ -3419,7 +3420,7 @@ function closeUserMenu() {
 }
 
 async function logout() {
-  await fetch('/api/logout');
+  await fetch('/api/logout', { credentials: 'include' });
   state.currentUser = null;
   location.reload();
 }
@@ -3500,6 +3501,7 @@ dom.loginForm.addEventListener('submit', async (event) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
+      credentials: 'include',
     });
     if (response.ok) {
       state.currentUser = await response.json();
@@ -3524,6 +3526,7 @@ dom.setupForm.addEventListener('submit', async (event) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, role: 'admin' }),
+      credentials: 'include',
     });
     if (response.ok) {
       state.currentUser = await response.json();
