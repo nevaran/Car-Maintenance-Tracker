@@ -6,7 +6,9 @@
     <title>Car Maintenance Tracker</title>
     <link rel="icon" href="favicon.ico" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="device-detect.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   </head>
   <body>
     <div id="toast-container" class="toast-container"></div>
@@ -136,7 +138,8 @@
               </div>
               <div class="form-row">
                 <label for="date">Date <span style="font-size: 0.9em; color: #a3b4d1;">(YYYY-MM-DD)</span></label>
-                <input id="date" type="text" placeholder="2026-04-21" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" required />
+                <input id="date" type="text" placeholder="2026-04-21" required />
+                <input id="native-date" type="date" style="display:none;" aria-hidden="true" />
               </div>
               <div class="form-row split">
                 <div>

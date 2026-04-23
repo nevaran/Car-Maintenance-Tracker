@@ -26,6 +26,7 @@ const dom = {
   form: document.getElementById('event-form'),
   title: document.getElementById('title'),
   date: document.getElementById('date'),
+  nativeDateInput: document.getElementById('native-date'),
   cost: document.getElementById('cost'),
   repeat: document.getElementById('repeat'),
   notes: document.getElementById('notes'),
@@ -70,6 +71,9 @@ const dom = {
   createUserRole: document.getElementById('create-user-role'),
 };
 
+// Flatpickr instance for date picker
+let datePicker;
+
 function pad(value) {
   return String(value).padStart(2, '0');
 }
@@ -104,6 +108,26 @@ function formatISO(date) {
 function parseISODate(value) {
   const [year, month, day] = value.split('-').map(Number);
   return new Date(year, month - 1, day);
+}
+
+// Helper function to set date in both input and Flatpickr
+function setDateValue(isoDate) {
+  dom.date.value = isoDate;
+  if (datePicker) {
+    datePicker.setDate(isoDate, false); // false prevents triggering onChange
+  }
+  if (dom.nativeDateInput) {
+    dom.nativeDateInput.value = isoDate;
+  }
+}
+
+function openMobileDatePicker() {
+  if (!dom.nativeDateInput) return;
+  if (typeof dom.nativeDateInput.showPicker === 'function') {
+    dom.nativeDateInput.showPicker();
+  } else {
+    dom.nativeDateInput.focus();
+  }
 }
 
 function formatMoney(amount) {
@@ -2714,7 +2738,7 @@ function showEventModal({ reset = false } = {}) {
                          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                          String(now.getDate()).padStart(2, '0');
       if (dom.date.value !== expectedISO) {
-        dom.date.value = expectedISO;
+        setDateValue(expectedISO);
       }
     }, 10);
   }
@@ -2905,7 +2929,7 @@ function renderCalendar() {
     cell.addEventListener('click', () => {
       if (state.currentUser.role === 'admin') {
         resetForm();
-        dom.date.value = formatISO(date);
+        setDateValue(formatISO(date));
         showEventModal();
         dom.title.focus();
       }
@@ -3120,7 +3144,7 @@ function resetForm() {
   const isoDateString = now.getFullYear() + '-' + 
                        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                        String(now.getDate()).padStart(2, '0');
-  dom.date.value = isoDateString;
+  setDateValue(isoDateString);
   
   dom.done.checked = false;
   dom.title.readOnly = false;
@@ -3204,7 +3228,8 @@ function loadEventForEdit(id, originId, occurrenceDate, isGenerated, isOverride)
   dom.title.value = originEvent?.title || event?.title || '';
   const eventDate = isGenerated ? occurrenceDate : formatISO(new Date(event?.date || sourceEvent.date));
   // Ensure date is in ISO format
-  dom.date.value = /^\d{4}-\d{2}-\d{2}$/.test(eventDate) ? eventDate : formatISO(new Date(eventDate));
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(eventDate) ? eventDate : formatISO(new Date(eventDate));
+  setDateValue(isoDate);
   dom.cost.value = Number((actualOverride ? event : sourceEvent)?.cost || 0).toFixed(2);
   dom.repeat.value = repeatValue;
   dom.notes.value = (actualOverride ? event : sourceEvent)?.notes || '';
@@ -3246,38 +3271,27 @@ if (window.visualViewport) {
 
 dom.clearForm.addEventListener('click', resetForm);
 
-// Auto-format date input to ISO format as user types
-dom.date.addEventListener('input', (e) => {
-  let value = e.target.value.replace(/[^\d-]/g, ''); // Remove non-digit and non-hyphen chars
-  
-  // Auto-insert hyphens while typing
-  if (value.length === 4 && !value.includes('-')) {
-    value = value + '-';
-  } else if (value.length === 7 && (value.match(/-/g) || []).length === 1) {
-    value = value + '-';
-  } else if (value.length > 10) {
-    // Keep only first 10 chars (YYYY-MM-DD format)
-    value = value.substring(0, 10);
-  }
-  
-  e.target.value = value;
-});
-
-// Validate and normalize date on blur
+// Basic validation for manual input (Flatpickr handles most validation)
 dom.date.addEventListener('blur', (e) => {
-  let value = e.target.value.trim();
+  const value = e.target.value.trim();
   
   if (!value) return;
   
-  // Check if already in ISO format
+  // Check if it's already in ISO format and valid
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return; // Already correct format
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) {
+      return; // Valid ISO date
+    }
   }
   
-  // Try to parse various date formats and convert to ISO
+  // Try to parse and convert to ISO format
   const date = new Date(value);
   if (!isNaN(date.getTime())) {
     e.target.value = formatISO(date);
+  } else {
+    // Invalid date, clear it
+    e.target.value = '';
   }
 });
 
@@ -3343,7 +3357,31 @@ function initializeApp() {
     option.textContent = year;
     dom.yearSelect.appendChild(option);
   }
-  dom.date.value = formatISO(new Date());
+  setDateValue(formatISO(new Date()));
+
+  if (isMobileDevice()) {
+    dom.nativeDateInput.value = dom.date.value;
+    dom.date.readOnly = true;
+    dom.date.addEventListener('focus', openMobileDatePicker);
+    dom.date.addEventListener('click', openMobileDatePicker);
+    dom.date.addEventListener('keydown', (event) => {
+      event.preventDefault();
+      openMobileDatePicker();
+    });
+    dom.nativeDateInput.addEventListener('change', (e) => {
+      if (e.target.value) {
+        setDateValue(e.target.value);
+      }
+    });
+  } else {
+    datePicker = flatpickr(dom.date, {
+      dateFormat: "Y-m-d",
+      allowInput: true,
+      clickOpens: true,
+      defaultDate: dom.date.value
+    });
+  }
+  
   initializeLocaleUI();
   initializeUserUI();
   updateLocaleMenu();
