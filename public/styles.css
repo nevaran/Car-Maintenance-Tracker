@@ -283,6 +283,33 @@ body {
   flex-shrink: 0;
 }
 
+.timeline-search {
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+  max-width: 320px;
+  flex-shrink: 0;
+}
+
+.timeline-search input {
+  width: 100%;
+  padding: 0.6vmin 0.9vmin;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.5vmin;
+  background: rgba(7, 16, 28, 0.95);
+  color: #eef5ff;
+  font-size: 0.95rem;
+}
+
+.timeline-search input::placeholder {
+  color: rgba(255,255,255,0.45);
+}
+
+.timeline-search input:focus {
+  outline: 2px solid rgba(110, 148, 255, 0.35);
+  outline-offset: 1px;
+}
+
 .calendar-controls {
   display: grid;
   gap: 0.8vmin;

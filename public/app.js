@@ -4,6 +4,7 @@ const state = {
   events: [],
   currentDate: new Date(),
   currentUser: null,
+  searchTerm: '',
 };
 
 const dom = {
@@ -69,6 +70,7 @@ const dom = {
   createUserUsername: document.getElementById('create-user-username'),
   createUserPassword: document.getElementById('create-user-password'),
   createUserRole: document.getElementById('create-user-role'),
+  timelineSearch: document.getElementById('timeline-search'),
 };
 
 // Flatpickr instance for date picker
@@ -236,6 +238,7 @@ function applyLocaleTexts() {
   document.getElementById('calendar-title').textContent = gettext('calendarTitle');
   document.getElementById('timeline-title').textContent = gettext('timelineHeader');
   document.getElementById('timeline-range-label').textContent = gettext('timelineRangeLabel');
+  dom.timelineSearch.placeholder = gettext('searchEvents');
   document.getElementById('stats-title').textContent = gettext('statsTitle');
   dom.openEventModal.textContent = gettext('addEvent');
   dom.openEventModal.setAttribute('aria-label', gettext('addEvent'));
@@ -2960,11 +2963,21 @@ function adjustCalendarEventTextSizes() {
   });
 }
 
-function buildTimelineItems() {
+function buildTimelineItems(searchFilter = '') {
   const year = state.currentDate.getFullYear();
   const start = new Date(year, 0, 1);
   const end = new Date(year, 11, 31);
-  const occurrences = state.events.flatMap((event) => getEventOccurrences(event, start, end));
+  let occurrences = state.events.flatMap((event) => getEventOccurrences(event, start, end));
+  
+  // Filter by search term if provided
+  if (searchFilter.trim()) {
+    const filter = searchFilter.toLowerCase();
+    occurrences = occurrences.filter((evt) => 
+      evt.title.toLowerCase().includes(filter) || 
+      (evt.notes && evt.notes.toLowerCase().includes(filter))
+    );
+  }
+  
   occurrences.sort((a, b) => a.dateObj - b.dateObj);
 
   // Update the range label for the selected year
@@ -3038,12 +3051,22 @@ function buildTimelineItems() {
   });
 }
 
-function renderStats() {
+function renderStats(searchFilter = '') {
   const year = state.currentDate.getFullYear();
   dom.statsYear.textContent = `${year}`;
   const start = new Date(year, 0, 1);
   const end = new Date(year, 11, 31);
-  const occurrences = state.events.flatMap((event) => getEventOccurrences(event, start, end));
+  let occurrences = state.events.flatMap((event) => getEventOccurrences(event, start, end));
+  
+  // Filter by search term if provided
+  if (searchFilter.trim()) {
+    const filter = searchFilter.toLowerCase();
+    occurrences = occurrences.filter((evt) => 
+      evt.title.toLowerCase().includes(filter) || 
+      (evt.notes && evt.notes.toLowerCase().includes(filter))
+    );
+  }
+  
   const total = occurrences.reduce((sum, evt) => sum + Number(evt.cost || 0), 0);
   const average = total / 12;
 
@@ -3055,7 +3078,7 @@ function renderStats() {
   const monthSums = Array.from({ length: 12 }, (_, index) => {
     const monthStart = new Date(year, index, 1);
     const monthEnd = new Date(year, index + 1, 0);
-    const monthEvents = state.events.flatMap((event) => getEventOccurrences(event, monthStart, monthEnd));
+    const monthEvents = occurrences.filter((evt) => evt.dateObj >= monthStart && evt.dateObj <= monthEnd);
     return monthEvents.reduce((sum, evt) => sum + Number(evt.cost || 0), 0);
   });
   const max = Math.max(...monthSums, 1);
@@ -3260,8 +3283,8 @@ function loadEventForEdit(id, originId, occurrenceDate, isGenerated, isOverride)
 function renderApp() {
   dom.todayLabel.textContent = `${gettext('todayLabel')} ${formatISO(new Date())}`;
   renderCalendar();
-  buildTimelineItems();
-  renderStats();
+  buildTimelineItems(state.searchTerm);
+  renderStats(state.searchTerm);
 }
 
 window.addEventListener('resize', adjustCalendarEventTextSizes);
@@ -3401,6 +3424,14 @@ function initializeApp() {
     }
   });
   dom.modalOverlay.addEventListener('click', hideEventModal);
+  
+  // Timeline search functionality
+  dom.timelineSearch.addEventListener('input', (e) => {
+    state.searchTerm = e.target.value;
+    buildTimelineItems(state.searchTerm);
+    renderStats(state.searchTerm);
+  });
+  
   fetchEvents();
   renderApp();
 }

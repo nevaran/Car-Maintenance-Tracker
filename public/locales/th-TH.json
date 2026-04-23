@@ -35,6 +35,7 @@
   "yearlyReminder": "การเตือนความจำรายปี",
   "oneTimeReminder": "การเตือนความจำครั้งเดียว",
   "noNotes": "ไม่มีบันทึก",
+  "searchEvents": "ค้นหาเหตุการณ์...",
   "localeLabel": "ภาษา",
   "logout": "ออกจากระบบ",
   "changePassword": "เปลี่ยนรหัสผ่าน",

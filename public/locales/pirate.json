@@ -32,6 +32,7 @@
   "pendingLabel": "Waitin’",
   "eventSingular": "happenin’",
   "eventPlural": "happenin’s",
+  "searchEvents": "Search fer happenin’s...",
   "logout": "Abandon ship",
   "changePassword": "Change yer secret code",
   "createUser": "Recruit new crew",
