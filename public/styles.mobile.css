@@ -168,3 +168,211 @@ body {
   padding: 1rem;
 }
 
+/* Hide close button on mobile */
+#close-event-modal {
+  display: none;
+}
+
+/* Mobile form styles for add/edit event modal */
+.form-panel {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.form-row {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.form-row.split {
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-row.split > div {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  font-size: 1.1rem;
+  color: #a9b5d5;
+  font-weight: 500;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 1rem;
+  background: rgba(7, 16, 28, 0.95);
+  color: #eef5ff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255,255,255,0.45);
+  font-size: 1rem;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 8rem;
+  font-family: inherit;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.2rem;
+  color: #d8e2ff;
+  font-weight: 500;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.02);
+  border: 2px solid rgba(255,255,255,0.05);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  margin: 0;
+  border-radius: 0.5rem;
+}
+
+.form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.form-actions button {
+  min-height: 5rem;
+  font-size: 1.2rem;
+  padding: 1rem 1.5rem;
+  border-radius: 1rem;
+  font-weight: 600;
+}
+
+.form-actions button.primary {
+  background: rgba(110, 148, 255, 0.9);
+  border: 2px solid rgba(110, 148, 255, 0.3);
+  grid-column: 1 / -1;
+}
+
+.form-actions button.secondary {
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.08);
+}
+
+/* Mobile timeline item styles */
+.timeline-item {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(19, 31, 54, 0.92);
+  border: 2px solid rgba(255,255,255,0.05);
+  position: relative;
+  min-width: 0;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.timeline-item .timeline-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0.6rem;
+  border-radius: 1rem 0 0 1rem;
+}
+
+.timeline-item .done-btn-large {
+  grid-row: 1;
+  grid-column: 1;
+  justify-self: start;
+  align-self: start;
+  min-width: 7rem;
+  height: 2.5rem;
+  font-size: 0.95rem;
+  border-radius: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.timeline-item .timeline-content {
+  grid-row: 2;
+  grid-column: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.timeline-item .item-actions {
+  grid-row: 3;
+  grid-column: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.timeline-item .item-actions button {
+  min-height: 3.5rem;
+  font-size: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  border: 2px solid transparent;
+}
+
+.timeline-item .item-actions button.edit {
+  background: rgba(110, 148, 255, 0.9);
+  border-color: rgba(110, 148, 255, 0.3);
+}
+
+.timeline-item .item-actions button.delete {
+  background: rgba(255, 92, 92, 0.9);
+  border-color: rgba(255, 92, 92, 0.3);
+}
+
+.timeline-item time {
+  display: block;
+  color: #8da6ff;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.timeline-item strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.timeline-meta {
+  display: block;
+  color: #c8d5ff;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
