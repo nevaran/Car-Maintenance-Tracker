@@ -1,4 +1,7 @@
 target/
+.continue/
+.git
+.gitignore
 
 # Environment
 .env
