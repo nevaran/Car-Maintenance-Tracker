@@ -707,19 +707,23 @@ button.secondary {
 .timeline-item .item-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.6vmin;
+  gap: 2vmin;
   flex-shrink: 0;
+  align-self: stretch;
+  justify-content: space-between;
+  padding: 0.3vmin 0;
 }
 
 .timeline-item button {
   border: none;
   border-radius: 1vmin;
-  padding: 0.6vmin 1vmin;
+  padding: 0.8vmin 1.5vmin;
   color: #eef5ff;
   cursor: pointer;
   background: rgba(255,255,255,0.05);
   font-size: 1rem;
   white-space: nowrap;
+  min-height: 4.5vmin;
 }
 
 .timeline-item button.edit {

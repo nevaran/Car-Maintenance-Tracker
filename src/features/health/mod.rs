@@ -12,12 +12,24 @@ impl HealthHandlers {
     }
 
     pub async fn check_setup(&self) -> Response {
-        // Priority 2 Security Fix: Hide setup status to prevent reconnaissance
-        // Always return false to indicate system is configured
-        (
-            axum::http::StatusCode::OK,
-            Json(serde_json::json!({"needs_setup": false})),
-        )
-            .into_response()
+        // Check if there are any users in the database
+        match self.user_repo.load_all().await {
+            Ok(users) => {
+                let needs_setup = users.is_empty();
+                (
+                    axum::http::StatusCode::OK,
+                    Json(serde_json::json!({"needs_setup": needs_setup})),
+                )
+                    .into_response()
+            }
+            Err(_) => {
+                // On error, assume setup is needed to allow initial setup
+                (
+                    axum::http::StatusCode::OK,
+                    Json(serde_json::json!({"needs_setup": true})),
+                )
+                    .into_response()
+            }
+        }
     }
 }
