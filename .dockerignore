@@ -1,7 +1,6 @@
 # Build artifacts (will rebuild in container)
 target/
 Cargo.lock
-CVEs-and-Security/
 
 # Version control
 .git/
@@ -9,10 +8,13 @@ CVEs-and-Security/
 .gitattributes
 
 # Development
+CVEs-and-Security/
+_sources/
 .vscode/
 .DS_Store
 *.swp
 *.swo
+.continue/
 
 # Docker
 Dockerfile
@@ -33,6 +35,8 @@ npm-debug.log
 # Runtime data (don't bake into image)
 data/events.json
 data/users.json
+data/login_attempts.json
+data/events.json
 
 # IDE
 .idea/
