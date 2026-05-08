@@ -2,6 +2,10 @@
 
 A browser-based car maintenance tracker with a Rust/Axum backend, persistent JSON storage, interactive calendar UI, timeline view, user authentication, and yearly expense statistics.
 
+The app is extremely lightweight tested as a docker container with a resource usage:
+- 1.2MiB RAM usage with an empty project, and initial user (admin)
+- 3MiB RAM usage with 20 events of various types and information, and two users (admin and read-only)
+
 ## Overview
 
 This project includes:
@@ -59,7 +63,7 @@ docker run --rm -p 3000:3000 -v "$PWD/data:/app/data" car-maintenance-tracker
 
 Then open `http://localhost:3000`.
 
-## Run with Docker Compose
+## Run with Docker Compose (recommended)
 
 ```bash
 docker compose build
@@ -86,14 +90,24 @@ The `data` directory is mounted so event and user data persist between restarts.
 - Locale switching between different languages
 - User authentication with admin setup and read-only user support
 - Password change flow for logged-in users
+- Desktop and Mobile variants of the web interface
 
 ## Data files
 
 - `data/events.json` — stores maintenance events
 - `data/users.json` — stores user accounts and settings
+- `data/audit.json` — stores all logins of users with event-type details (raw view only)
+- `data/login_attempts.json` — stores user information about account state (raw view only)
 
 ## Notes
 
 - The server falls back to `public/index.html` for client-side routing.
 - Localization bundles are loaded from `public/locales/`.
 - The app is designed to work without a frontend build step; static assets are served directly.
+
+## Roadmap
+
+### Add email notification system
+### Improve events search field flexibility (reverse search, multi-search)
+### Improve security, specifically in the users data
+### Code refactoring
