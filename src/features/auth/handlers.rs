@@ -1,3 +1,4 @@
+// HTTP handlers for authentication endpoints and session lifecycle.
 use super::commands::*;
 use super::queries::*;
 use super::service::AuthService;
@@ -19,6 +20,7 @@ pub struct AuthHandlers {
 }
 
 impl AuthHandlers {
+    // Construct auth handlers with the auth service, IP extractor, and login rate limiter
     pub fn new(service: Arc<AuthService>, ip_extractor: Arc<dyn crate::domain::IpExtractor>) -> Self {
         Self {
             service,
@@ -27,16 +29,19 @@ impl AuthHandlers {
         }
     }
 
+    // Build the Set-Cookie header to maintain session state for a user
     fn session_cookie_header(&self, user_id: &str) -> HeaderValue {
         HeaderValue::from_str(&AuthService::build_session_cookie(user_id)).unwrap()
     }
 
+    // Append a refreshed session cookie to an existing HTTP response
     fn refresh_cookie_response<T: IntoResponse>(&self, user_id: &str, response: T) -> Response {
         let mut response = response.into_response();
         response.headers_mut().append(header::SET_COOKIE, self.session_cookie_header(user_id));
         response
     }
 
+    // Handle initial admin registration and return a logged-in admin session
     pub async fn register_admin(
         &self,
         Json(payload): Json<CreateUserRequest>,
@@ -59,12 +64,13 @@ impl AuthHandlers {
         }
     }
 
+    // Handle user login with rate limiting and return a session cookie
     pub async fn login(
         &self,
         headers: HeaderMap,
         Json(payload): Json<LoginRequest>,
     ) -> Response {
-        // Check rate limit (Priority 2 Security Fix: Prevent brute-force attacks)
+        // Check rate limit - Prevent brute-force attacks)
         if self.login_limiter.check().is_err() {
             return crate::error::AppError::TooManyRequests(
                 "Too many login attempts. Please try again later.".to_string()

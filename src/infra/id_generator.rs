@@ -1,3 +1,4 @@
+// Timestamp-based ID generator used by the application for unique entity IDs.
 use crate::domain::IdGenerator;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;

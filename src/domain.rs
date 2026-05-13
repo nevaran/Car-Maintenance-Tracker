@@ -1,3 +1,4 @@
+// Domain models, value types, and interfaces used throughout the app.
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;

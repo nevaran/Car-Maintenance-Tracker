@@ -1,3 +1,4 @@
+// Feature module exports for application business domains.
 pub mod auth;
 pub mod events;
 pub mod health;

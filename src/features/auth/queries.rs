@@ -1,3 +1,4 @@
+// Query DTOs for authentication lookup and session management.
 use crate::domain::User;
 use serde::{Deserialize, Serialize};
 

@@ -1,3 +1,4 @@
+// Command DTOs for event creation, updates, and deletion.
 use crate::domain::Event;
 use chrono::NaiveDate;
 

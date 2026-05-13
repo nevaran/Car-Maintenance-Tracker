@@ -1,3 +1,4 @@
+// Main application entrypoint and HTTP routing setup for the tracker.
 mod domain;
 mod error;
 mod features;

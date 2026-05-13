@@ -1,3 +1,4 @@
+// Business logic for event management and repository orchestration.
 use super::commands::*;
 use super::queries::*;
 use crate::domain::Event;
@@ -11,16 +12,20 @@ pub struct EventService {
     id_gen: Arc<dyn crate::domain::IdGenerator>,
 }
 
+// Event service implementing list, create, update, and delete business logic.
 impl EventService {
+    // Construct the event service with persistence and ID generation dependencies.
     pub fn new(event_repo: Arc<dyn EventRepository>, id_gen: Arc<dyn crate::domain::IdGenerator>) -> Self {
         Self { event_repo, id_gen }
     }
 
+    // Load all persisted events from storage.
     pub async fn list_events(&self, _query: ListEventsQuery) -> Result<ListEventsQueryResult> {
         let events = self.event_repo.load_all().await?;
         Ok(ListEventsQueryResult { events })
     }
 
+    // Create a new event record and persist it.
     pub async fn create_event(&self, cmd: CreateEventCommand) -> Result<CreateEventCommandResult> {
         let mut events = self.event_repo.load_all().await?;
 
@@ -49,6 +54,7 @@ impl EventService {
         Ok(CreateEventCommandResult { event })
     }
 
+    // Update an existing event if found.
     pub async fn update_event(&self, cmd: UpdateEventCommand) -> Result<UpdateEventCommandResult> {
         let mut events = self.event_repo.load_all().await?;
 
@@ -105,6 +111,7 @@ impl EventService {
         Ok(UpdateEventCommandResult { event: response })
     }
 
+    // Delete an event and any related recurring derivatives.
     pub async fn delete_event(&self, cmd: DeleteEventCommand) -> Result<DeleteEventCommandResult> {
         let mut events = self.event_repo.load_all().await?;
 

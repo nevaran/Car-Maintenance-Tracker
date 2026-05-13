@@ -1,3 +1,4 @@
+// Error definitions and HTTP response conversion for application errors.
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},

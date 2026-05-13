@@ -1,5 +1,11 @@
+/**
+ * Frontend application logic for Car Maintenance Tracker.
+ * Manages calendar rendering, timeline search, locale switching,
+ * user authentication flows, and event CRUD interactions.
+ */
 const POLL_INTERVAL_MS = 30000;
 
+// App state stored in memory for rendering and UI behavior
 const state = {
   events: [],
   currentDate: new Date(),
@@ -7,6 +13,7 @@ const state = {
   searchTerm: '',
 };
 
+// Cached DOM references for page interactions and UI updates
 const dom = {
   calendarGrid: document.getElementById('calendar-grid'),
   monthLabel: document.getElementById('month-label'),
@@ -73,14 +80,15 @@ const dom = {
   timelineSearch: document.getElementById('timeline-search'),
 };
 
-// Flatpickr instance for date picker
+// Shared Flatpickr instance for date selection
 let datePicker;
 
+// Simple numeric padding helper for date formatting
 function pad(value) {
   return String(value).padStart(2, '0');
 }
 
-// Toast notification system
+// Toast notification system for user feedback messages
 function showToast(message, type = 'info', duration = 3000) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
@@ -132,10 +140,12 @@ function openMobileDatePicker() {
   }
 }
 
+// Format currency values for the UI
 function formatMoney(amount) {
   return `€${amount.toFixed(2)}`;
 }
 
+// Supported locale definitions for UI translation and flag icons
 const LOCALES = [
   { code: 'en-US', flag: 'us.svg', short: 'US', label: 'English (US)' },
   { code: 'bg', flag: 'bg.svg', short: 'BG', label: 'Български (BG)' },
@@ -147,6 +157,7 @@ const LOCALES = [
 const localeBundles = {};
 let selectedLocale = 'en-US';
 
+// Load localization bundles for all supported languages
 async function loadLocales() {
   for (const locale of LOCALES) {
     try {
@@ -162,6 +173,7 @@ async function loadLocales() {
   }
 }
 
+// Apply the current user's preferred locale if available
 function loadUserSettings() {
   if (state.currentUser && state.currentUser.settings.locale) {
     selectedLocale = state.currentUser.settings.locale;
@@ -181,6 +193,7 @@ function getFlagMarkup(flag, short) {
   return `<img class="flag-icon" src="/images/flags/${flag}" alt="${short} flag" />`;
 }
 
+// Update locale menu UI with the currently selected language
 function updateLocaleMenu() {
   const selected = LOCALES.find((item) => item.code === selectedLocale) || LOCALES[0];
   dom.localeButton.innerHTML = `${getFlagMarkup(selected.flag, selected.short)}<span class="locale-short">${selected.short}</span>`;
@@ -200,6 +213,7 @@ function updateLocaleMenu() {
   });
 }
 
+// Switch the app locale, refresh the UI, and persist the choice for logged-in users
 async function setLocale(code) {
   const locale = LOCALES.find((entry) => entry.code === code) ? code : 'en-US';
   selectedLocale = locale;
@@ -376,6 +390,7 @@ function isEventWithinLastWeek(eventDate) {
   return event >= today && event <= oneWeekFromNow;
 }
 
+// Placeholder hook for resetting generated yearly events after load
 function checkAndResetYearlyEvents() {
   // Yearly occurrences are handled separately by generated per-year state.
 }
@@ -540,6 +555,7 @@ function adjustCalendarEventTextSizes() {
   });
 }
 
+// Build timeline items for the selected year and apply search filtering
 function buildTimelineItems(searchFilter = '') {
   const year = state.currentDate.getFullYear();
   const start = new Date(year, 0, 1);
@@ -632,6 +648,7 @@ function buildTimelineItems(searchFilter = '') {
   });
 }
 
+// Render yearly statistics and month-by-month expense bars
 function renderStats(searchFilter = '') {
   const year = state.currentDate.getFullYear();
   dom.statsYear.textContent = `${year}`;
@@ -680,6 +697,7 @@ function renderStats(searchFilter = '') {
   }).join('');
 }
 
+// Load events from the backend and refresh the UI
 async function fetchEvents() {
   const response = await fetch('/api/events', { credentials: 'include' });
   state.events = await response.json();
@@ -688,6 +706,7 @@ async function fetchEvents() {
   checkAndResetYearlyEvents();
 }
 
+// Create or update an event on the server, then reload events
 async function saveEvent(event) {
   const method = event.id ? 'PUT' : 'POST';
   const url = event.id ? `/api/events/${event.id}` : '/api/events';
@@ -700,6 +719,7 @@ async function saveEvent(event) {
   await fetchEvents();
 }
 
+// Delete an event on the server and refresh the event list
 async function removeEvent(id) {
   await fetch(`/api/events/${id}`, { method: 'DELETE', credentials: 'include' });
   await fetchEvents();

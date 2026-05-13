@@ -1,3 +1,4 @@
+// File-based audit logging repository for security and authentication events.
 use crate::domain::{AuditLog, AuditRepository};
 use crate::error::Result;
 use std::path::Path;

@@ -1,3 +1,9 @@
+/**
+ * Device detection helper for Car Maintenance Tracker.
+ * Chooses and loads the appropriate stylesheet for mobile or desktop.
+ */
+
+// Detect whether the browser appears to be running on a mobile device
 function isMobileDevice() {
   const userAgent = navigator.userAgent || navigator.vendor || window.opera;
   const mobileAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
@@ -7,6 +13,7 @@ function isMobileDevice() {
   return mobileAgent.test(userAgent) || prefersTouch || narrowScreen;
 }
 
+// Load the mobile or desktop stylesheet exactly once
 function loadDeviceStylesheet() {
   if (document.querySelector('link[data-device]')) {
     return;

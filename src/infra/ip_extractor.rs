@@ -1,3 +1,4 @@
+// IP extraction helper that reads proxy headers or falls back to localhost.
 use crate::domain::IpExtractor;
 use axum::http::HeaderMap;
 use std::net::IpAddr;

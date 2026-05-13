@@ -1,3 +1,4 @@
+// Infrastructure module exports for data persistence and utility implementations.
 pub mod event_repository;
 pub mod user_repository;
 pub mod audit_repository;

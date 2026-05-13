@@ -1,3 +1,4 @@
+// Authentication service implementing business rules and repository coordination.
 use super::commands::*;
 use super::queries::*;
 use crate::domain::{ActiveSession, User, UserRole, AuditRepository, AuditLog, LoginAttempt};
@@ -23,6 +24,7 @@ pub struct AuthService {
 impl AuthService {
     const SESSION_COOKIE_MAX_AGE: i64 = 30 * 24 * 60 * 60; // 30 days
 
+    // Build the HTTP Set-Cookie header value for a user session.
     pub fn build_session_cookie(user_id: &str) -> String {
         let expires = (Utc::now() + chrono::Duration::seconds(Self::SESSION_COOKIE_MAX_AGE))
             .format("%a, %d %b %Y %H:%M:%S GMT")
@@ -36,6 +38,7 @@ impl AuthService {
         )
     }
 
+    // Create a new AuthService with repository dependencies and session tracking.
     pub fn new(
         user_repo: Arc<dyn UserRepository>,
         audit_repo: Arc<dyn AuditRepository>,
@@ -49,6 +52,7 @@ impl AuthService {
         }
     }
 
+    // Register the initial admin user during setup.
     pub async fn register_admin(&self, cmd: RegisterAdminCommand) -> Result<RegisterAdminCommandResult> {
         let users = self.user_repo.load_all().await?;
         
@@ -75,6 +79,7 @@ impl AuthService {
         Ok(RegisterAdminCommandResult { user })
     }
 
+    // Authenticate a user, enforce account lockout, and log authentication events.
     pub async fn login(&self, cmd: LoginCommand) -> Result<LoginCommandResult> {
         debug!("Login attempt for user: {}", cmd.username);
 
@@ -349,7 +354,6 @@ impl AuthService {
 
     // Queries
     pub async fn get_current_user(&self, query: GetCurrentUserQuery) -> Result<GetCurrentUserQueryResult> {
-        // Priority 2 Security Fix: Improve cookie parsing and validation
         // Extract user_id from cookie with proper validation
         let mut user_id = None;
         

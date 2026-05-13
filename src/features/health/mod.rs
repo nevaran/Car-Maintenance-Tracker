@@ -1,3 +1,4 @@
+// Health and setup handlers for service availability and initial admin setup checks.
 use crate::infra::UserRepository;
 use axum::{response::{IntoResponse, Response}, Json};
 use std::sync::Arc;

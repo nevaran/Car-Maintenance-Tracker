@@ -1,3 +1,4 @@
+// Query and request DTOs for event listing and HTTP payloads.
 use crate::domain::Event;
 use serde::Deserialize;
 

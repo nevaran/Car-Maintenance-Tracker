@@ -1,3 +1,4 @@
+// File-based event repository implementation for event persistence.
 use crate::domain::Event;
 use crate::error::Result;
 use std::path::Path;

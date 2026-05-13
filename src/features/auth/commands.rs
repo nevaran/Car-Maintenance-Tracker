@@ -1,3 +1,4 @@
+// Command DTOs for authentication operations and user management.
 use crate::domain::User;
 use std::collections::HashMap;
 

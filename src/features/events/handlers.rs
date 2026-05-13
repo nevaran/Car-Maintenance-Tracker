@@ -1,3 +1,4 @@
+// HTTP handlers for event endpoints, including authentication and authorization.
 use super::commands::*;
 use super::queries::*;
 use super::service::EventService;
@@ -23,7 +24,7 @@ impl EventHandlers {
         Self { service, auth_service }
     }
 
-    // Priority 1 Security Fix: Add authentication to Event API
+    // Authenticate the request by validating the session cookie and returning the current user
     async fn authenticate_request(&self, headers: &HeaderMap) -> Result<crate::domain::User, Response> {
         if let Some(cookie) = headers.get("cookie") {
             let cookie_str = cookie
@@ -51,8 +52,8 @@ impl EventHandlers {
         response
     }
 
+    // List all events for the authenticated user
     pub async fn list_events(&self, headers: HeaderMap) -> Response {
-        // Priority 1 Security Fix: Require authentication for list_events
         match self.authenticate_request(&headers).await {
             Ok(user) => {
                 let query = ListEventsQuery;
@@ -68,18 +69,17 @@ impl EventHandlers {
         }
     }
 
+    // Create a new event, allowing only admins to perform this action
     pub async fn create_event(
         &self,
         headers: HeaderMap,
         Json(payload): Json<CreateEventRequest>,
     ) -> Response {
-        // Priority 1 & 2 Security Fixes: Require authentication and verify admin role
         let user = match self.authenticate_request(&headers).await {
             Ok(u) => u,
             Err(e) => return e,
         };
 
-        // Priority 2 Security Fix: Check authorization (only admins can create events)
         if !user.is_admin() {
             return crate::error::AppError::Forbidden(
                 "Only admins can create events".to_string()
@@ -99,7 +99,6 @@ impl EventHandlers {
 
         let date = match NaiveDate::parse_from_str(&date_str, "%Y-%m-%d") {
             Ok(d) => {
-                // Priority 2 Security Fix: Validate date bounds
                 let min_date = NaiveDate::from_ymd_opt(1900, 1, 1).unwrap();
                 let max_date = NaiveDate::from_ymd_opt(2100, 12, 31).unwrap();
                 
@@ -156,19 +155,18 @@ impl EventHandlers {
         }
     }
 
+    // Update an existing event, validating admin authorization and input data
     pub async fn update_event(
         &self,
         headers: HeaderMap,
         Path(id): Path<String>,
         Json(payload): Json<UpdateEventRequest>,
     ) -> Response {
-        // Priority 1 & 2 Security Fixes: Require authentication and verify admin role
         let user = match self.authenticate_request(&headers).await {
             Ok(u) => u,
             Err(e) => return e,
         };
 
-        // Priority 2 Security Fix: Check authorization (only admins can update events)
         if !user.is_admin() {
             return crate::error::AppError::Forbidden(
                 "Only admins can update events".to_string()
@@ -225,14 +223,13 @@ impl EventHandlers {
         }
     }
 
+    // Delete an event and any derived override events associated with it
     pub async fn delete_event(&self, headers: HeaderMap, Path(id): Path<String>) -> Response {
-        // Priority 1 & 2 Security Fixes: Require authentication and verify admin role
         let user = match self.authenticate_request(&headers).await {
             Ok(u) => u,
             Err(e) => return e,
         };
 
-        // Priority 2 Security Fix: Check authorization (only admins can delete events)
         if !user.is_admin() {
             return crate::error::AppError::Forbidden(
                 "Only admins can delete events".to_string()

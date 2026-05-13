@@ -1,3 +1,4 @@
+// File-based user repository implementation for loading and saving users.
 use crate::domain::User;
 use crate::error::Result;
 use std::path::Path;
