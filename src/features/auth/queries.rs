@@ -12,17 +12,6 @@ pub struct GetCurrentUserQueryResult {
     pub user: User,
 }
 
-/// Query: Find user by ID
-#[derive(Debug, Clone)]
-pub struct FindUserByIdQuery {
-    pub id: String,
-}
-
-#[derive(Debug)]
-pub struct FindUserByIdQueryResult {
-    pub user: Option<User>,
-}
-
 /// Query: List active sessions
 #[derive(Debug, Clone)]
 pub struct ListActiveSessionsQuery;

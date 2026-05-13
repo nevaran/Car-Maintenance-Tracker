@@ -13,7 +13,6 @@ pub struct ListEventsQueryResult {
 /// DTO for HTTP layer
 #[derive(Debug, Deserialize)]
 pub struct CreateEventRequest {
-    pub id: Option<String>,
     pub title: Option<String>,
     pub date: Option<String>,
     pub cost: Option<f64>,
@@ -26,7 +25,6 @@ pub struct CreateEventRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateEventRequest {
-    pub id: Option<String>,
     pub title: Option<String>,
     pub date: Option<String>,
     pub cost: Option<f64>,
