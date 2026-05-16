@@ -3,8 +3,8 @@
 A browser-based car maintenance tracker with a Rust/Axum backend, persistent JSON storage, interactive calendar UI, timeline view, user authentication, and yearly expense statistics. Features comprehensive security measures including rate limiting, audit logging, and role-based authorization.
 
 The app is extremely lightweight tested as a docker container with a resource usage:
-- ~2MiB RAM usage with an empty project, and initial user (admin)
-- ~5MiB RAM usage with 20 events of various types and information, and two users (admin and read-only)
+- ~0.4MiB to ~1.2MiB RAM usage with an empty project, and initial user (admin)
+- ~3MiB to 5MiB RAM usage with medium number of events for a single year with various types and information, and two users (admin and read-only)
 
 ## Overview
 
