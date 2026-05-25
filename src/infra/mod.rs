@@ -4,9 +4,11 @@ pub mod user_repository;
 pub mod audit_repository;
 pub mod id_generator;
 pub mod ip_extractor;
+pub mod backup;
 
 pub use event_repository::{EventRepository, FileEventRepository};
 pub use user_repository::{UserRepository, FileUserRepository};
 pub use audit_repository::FileAuditRepository;
 pub use id_generator::TimestampIdGenerator;
 pub use ip_extractor::ProxyAwareIpExtractor;
+pub use backup::BackupManager;

@@ -69,6 +69,12 @@
   "loading": "Loading...",
   "errorLoading": "Error loading",
   "fromIP": "from IP",
+  "deleteConfirmTitle": "Delete event",
+  "deleteConfirmMessage": "This action cannot be undone. The event will be permanently deleted.",
+  "deleteConfirmSubtitle": "Are you sure?",
+  "deleteConfirmBtn": "Delete event",
+  "deleteCancelBtn": "Cancel",
+  "eventDeletedSuccessfully": "Event deleted successfully",
   "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
   "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 }

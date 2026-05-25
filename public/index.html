@@ -291,6 +291,25 @@
           </form>
         </div>
       </div>
+
+      <div id="delete-confirm-modal" class="modal" aria-hidden="true">
+        <div id="delete-confirm-overlay" class="modal-backdrop"></div>
+        <div class="modal-content delete-confirm-content" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+          <div class="modal-header delete-confirm-header">
+            <div>
+              <p id="delete-confirm-title-label" class="section-title">Delete event</p>
+              <h3 id="delete-confirm-title">Are you sure?</h3>
+            </div>
+          </div>
+          <div class="modal-body delete-confirm-body">
+            <p id="delete-confirm-message">This action cannot be undone. The event will be permanently deleted.</p>
+          </div>
+          <div class="form-actions delete-confirm-actions">
+            <button id="delete-cancel-btn" class="secondary">Cancel</button>
+            <button id="delete-confirm-btn" class="primary">Delete event</button>
+          </div>
+        </div>
+      </div>
     </div>
     <script src="app.js"></script>
   </body>

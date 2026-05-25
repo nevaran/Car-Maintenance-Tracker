@@ -69,6 +69,33 @@
   "loading": "Loadin’ the cargo...",
   "errorLoading": "Trouble loadin’",
   "fromIP": "from port",
-  "months": ["Jan-yarr-y", "Feb-yarr-y", "Marrrch", "April", "May", "June", "July", "Aug-yarr-st", "Sep-tarr-ber", "Octo-ber", "Novem-ber", "Decem-ber"],
-  "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  "deleteConfirmTitle": "Send to Davy Jones' Locker",
+  "deleteConfirmMessage": "This be permanent, ye scallywag! The happenin' will be gone fer good.",
+  "deleteConfirmSubtitle": "Be ye sure, matey?",
+  "deleteConfirmBtn": "Send it down, captain",
+  "deleteCancelBtn": "Belay that",
+  "eventDeletedSuccessfully": "Happenin' sent to the depths",
+  "months": [
+    "Jan-yarr-y",
+    "Feb-yarr-y",
+    "Marrrch",
+    "April",
+    "May",
+    "June",
+    "July",
+    "Aug-yarr-st",
+    "Sep-tarr-ber",
+    "Octo-ber",
+    "Novem-ber",
+    "Decem-ber"
+  ],
+  "weekdays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun"
+  ]
 }

@@ -14,13 +14,14 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use axum::http::HeaderValue;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 use domain::IpExtractor;
 use features::{AuthHandlers, AuthService, EventHandlers, EventService, HealthHandlers};
 use infra::{
-    FileEventRepository, FileUserRepository, FileAuditRepository, ProxyAwareIpExtractor, TimestampIdGenerator,
+    FileEventRepository, FileUserRepository, FileAuditRepository, ProxyAwareIpExtractor, TimestampIdGenerator, BackupManager,
 };
 
 #[tokio::main]
@@ -45,6 +46,39 @@ async fn main() {
     // Initialize services
     let auth_service = Arc::new(AuthService::new(user_repo.clone(), audit_repo.clone(), id_gen.clone()));
     let event_service = Arc::new(EventService::new(event_repo, id_gen));
+
+    // Background pruning task to cleanup expired sessions periodically
+    {
+        let auth_clone = auth_service.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(300)).await; // 5 minutes
+                auth_clone.prune_expired_sessions().await;
+            }
+        });
+    }
+
+    // Background backup task to create daily snapshots of events file
+    {
+        let backup_manager = BackupManager::new("data/events.json");
+        tokio::spawn(async move {
+            // Run backup immediately on startup (in case it's the first run of the day)
+            let _ = backup_manager.backup_daily().await;
+            
+            loop {
+                // Check every hour if we need to create a daily backup
+                tokio::time::sleep(Duration::from_secs(3600)).await;
+                match backup_manager.backup_daily().await {
+                    Ok(_) => {
+                        // Backup completed successfully or already exists for today
+                    }
+                    Err(e) => {
+                        tracing::error!(error = ?e, "failed to perform daily backup");
+                    }
+                }
+            }
+        });
+    }
 
     // Initialize handlers  
     let auth = Arc::new(AuthHandlers::new(auth_service.clone(), ip_extractor));

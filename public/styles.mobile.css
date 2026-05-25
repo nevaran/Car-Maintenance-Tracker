@@ -275,6 +275,42 @@ textarea {
   border: 2px solid rgba(255,255,255,0.08);
 }
 
+/* Delete confirmation modal on mobile - mirror desktop placement and sizing */
+.delete-confirm-content {
+  width: min(92vw, 45vmin) !important;
+  padding: 1.2vmin !important;
+  margin: 0 auto !important;
+}
+
+.delete-confirm-actions {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 1rem !important;
+  margin-top: 1.5rem !important;
+  align-items: center !important;
+}
+
+.delete-confirm-actions button {
+  flex: 1 1 auto !important;
+  min-width: 12vmin !important;
+  max-width: 18vmin !important;
+  min-height: 4.5rem !important;
+  font-size: 1.05rem !important;
+  padding: 0.9rem 1.2rem !important;
+  border-radius: 1rem !important;
+  font-weight: 600 !important;
+}
+
+.delete-confirm-actions button.primary {
+  background: linear-gradient(135deg, #ff6b6b, #ff8787) !important;
+  border: 2px solid rgba(255, 107, 107, 0.3) !important;
+}
+
+.delete-confirm-actions button.secondary {
+  background: rgba(255,255,255,0.05) !important;
+  border: 2px solid rgba(255,255,255,0.08) !important;
+}
+
 /* Mobile timeline item styles */
 .timeline-item {
   display: grid;

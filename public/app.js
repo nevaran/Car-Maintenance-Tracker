@@ -78,7 +78,14 @@ const dom = {
   createUserPassword: document.getElementById('create-user-password'),
   createUserRole: document.getElementById('create-user-role'),
   timelineSearch: document.getElementById('timeline-search'),
+  deleteConfirmModal: document.getElementById('delete-confirm-modal'),
+  deleteConfirmOverlay: document.getElementById('delete-confirm-overlay'),
+  deleteConfirmBtn: document.getElementById('delete-confirm-btn'),
+  deleteCancelBtn: document.getElementById('delete-cancel-btn'),
 };
+
+// State for pending deletion
+let pendingDeleteId = null;
 
 // Shared Flatpickr instance for date selection
 let datePicker;
@@ -644,7 +651,7 @@ function buildTimelineItems(searchFilter = '') {
     ));
   });
   dom.eventList.querySelectorAll('button.delete').forEach((button) => {
-    button.addEventListener('click', () => removeEvent(button.dataset.id));
+    button.addEventListener('click', () => showDeleteConfirm(button.dataset.id));
   });
 }
 
@@ -719,10 +726,35 @@ async function saveEvent(event) {
   await fetchEvents();
 }
 
+// Show delete confirmation modal
+function showDeleteConfirm(id) {
+  // Localize the modal
+  // Keep the structural subtitle (`#delete-confirm-title`) as authored in HTML
+  // only update the section label and the explanatory message.
+  document.getElementById('delete-confirm-title-label').textContent = gettext('deleteConfirmTitle');
+  document.getElementById('delete-confirm-title').textContent = gettext('deleteConfirmSubtitle');
+  document.getElementById('delete-confirm-message').textContent = gettext('deleteConfirmMessage');
+  document.getElementById('delete-cancel-btn').textContent = gettext('deleteCancelBtn');
+  document.getElementById('delete-confirm-btn').textContent = gettext('deleteConfirmBtn');
+  
+  pendingDeleteId = id;
+  dom.deleteConfirmModal.classList.add('open');
+  dom.deleteConfirmModal.setAttribute('aria-hidden', 'false');
+}
+
+// Hide delete confirmation modal
+function hideDeleteConfirm() {
+  pendingDeleteId = null;
+  dom.deleteConfirmModal.classList.remove('open');
+  dom.deleteConfirmModal.setAttribute('aria-hidden', 'true');
+}
+
 // Delete an event on the server and refresh the event list
 async function removeEvent(id) {
   await fetch(`/api/events/${id}`, { method: 'DELETE', credentials: 'include' });
   await fetchEvents();
+  hideDeleteConfirm();
+  showToast(gettext('eventDeletedSuccessfully'), 'success');
 }
 
 async function toggleEventDone(id, parentId, occurrenceDate, currentDone, isOverride) {
@@ -1025,6 +1057,29 @@ function initializeApp() {
     }
   });
   dom.modalOverlay.addEventListener('click', hideEventModal);
+  
+  // Delete confirmation modal handlers
+  dom.deleteConfirmBtn.addEventListener('click', async () => {
+    if (pendingDeleteId) {
+      await removeEvent(pendingDeleteId);
+    }
+  });
+  dom.deleteCancelBtn.addEventListener('click', hideDeleteConfirm);
+  dom.deleteConfirmOverlay.addEventListener('click', hideDeleteConfirm);
+  
+  // Close delete confirmation on Escape key, confirm on Enter
+  document.addEventListener('keydown', (e) => {
+    if (dom.deleteConfirmModal.getAttribute('aria-hidden') === 'false') {
+      if (e.key === 'Escape') {
+        hideDeleteConfirm();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (pendingDeleteId) {
+          removeEvent(pendingDeleteId);
+        }
+      }
+    }
+  });
   
   // Timeline search functionality
   dom.timelineSearch.addEventListener('input', (e) => {

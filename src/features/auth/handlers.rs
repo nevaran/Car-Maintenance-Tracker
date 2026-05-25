@@ -25,13 +25,14 @@ impl AuthHandlers {
         Self {
             service,
             ip_extractor,
-            login_limiter: RateLimiter::direct(Quota::per_minute(NonZeroU32::new(5).unwrap())),
+            login_limiter: RateLimiter::direct(Quota::per_minute(NonZeroU32::new(5).expect("non-zero constant"))),
         }
     }
 
     // Build the Set-Cookie header to maintain session state for a user
     fn session_cookie_header(&self, user_id: &str) -> HeaderValue {
-        HeaderValue::from_str(&AuthService::build_session_cookie(user_id)).unwrap()
+        HeaderValue::from_str(&AuthService::build_session_cookie(user_id))
+            .expect("failed to create session cookie header")
     }
 
     // Append a refreshed session cookie to an existing HTTP response
@@ -88,7 +89,8 @@ impl AuthHandlers {
         match self.service.login(cmd).await {
             Ok(result) => (
                 StatusCode::OK,
-                [(header::SET_COOKIE, HeaderValue::from_str(&result.cookie).unwrap())],
+                [(header::SET_COOKIE, HeaderValue::from_str(&result.cookie)
+                    .expect("invalid cookie header"))],
                 Json(result.user),
             )
                 .into_response(),
@@ -163,7 +165,7 @@ impl AuthHandlers {
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
             Ok(user) => {
-                let user_id = user.id.clone();
+                let user_id = user.id;
                 let cmd = ChangePasswordCommand {
                     user_id: user_id.clone(),
                     old_password: payload.old_password,
@@ -189,7 +191,7 @@ impl AuthHandlers {
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
             Ok(user) => {
-                let user_id = user.id.clone();
+                let user_id = user.id;
                 let cmd = UpdateSettingsCommand {
                     user_id: user_id.clone(),
                     settings: payload.settings,

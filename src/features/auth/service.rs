@@ -389,9 +389,12 @@ impl AuthService {
     }
 
     pub async fn list_active_sessions(&self, _query: ListActiveSessionsQuery) -> Result<ListActiveSessionsQueryResult> {
+        // Ensure expired sessions are removed before listing active sessions
+        self.prune_expired_sessions().await;
+
         let sessions = self.sessions.lock().await;
         let now = SystemTime::now();
-        
+
         let sessions_list: Vec<_> = sessions
             .values()
             .filter(|s| {
@@ -408,5 +411,27 @@ impl AuthService {
         Ok(ListActiveSessionsQueryResult {
             sessions: sessions_list,
         })
+    }
+
+    // Remove sessions older than the session cookie max age to prevent unbounded memory growth.
+    pub async fn prune_expired_sessions(&self) {
+        let mut sessions = self.sessions.lock().await;
+        let now = SystemTime::now();
+        let expiry_secs = Self::SESSION_COOKIE_MAX_AGE as u64;
+
+        let expired_keys: Vec<String> = sessions
+            .iter()
+            .filter_map(|(k, s)| {
+                if now.duration_since(s.last_seen).unwrap_or_default().as_secs() > expiry_secs {
+                    Some(k.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for k in expired_keys {
+            sessions.remove(&k);
+        }
     }
 }

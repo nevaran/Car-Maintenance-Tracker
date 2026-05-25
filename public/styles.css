@@ -617,6 +617,58 @@ button.secondary {
   cursor: pointer;
 }
 
+/* Delete confirmation modal styling */
+.delete-confirm-content {
+  width: min(100%, 45vmin);
+  padding: 2vmin;
+}
+
+.delete-confirm-header {
+  margin-bottom: 1.5vmin;
+}
+
+.delete-confirm-body {
+  padding: 1.5vmin 0 1.5vmin 0;
+  color: #8da6ff;
+  margin-bottom: 0.5vmin;
+}
+
+.delete-confirm-actions {
+  justify-content: center;
+  gap: 1.5vmin;
+  margin-top: 2vmin;
+  flex-wrap: nowrap;
+}
+
+.delete-confirm-actions button {
+  flex: 1 1 auto;
+  min-width: 0; /* allow shrinking on narrow screens */
+  max-width: 18vmin;
+}
+
+@media (max-width: 520px) {
+  .delete-confirm-content {
+    width: 92vw; /* smaller modal on narrow screens */
+    padding: 1.2vmin;
+  }
+  .delete-confirm-actions {
+    gap: 1rem;
+  }
+  .delete-confirm-actions button {
+    min-width: 40%; /* keep buttons side-by-side but reasonably sized */
+  }
+}
+
+#delete-confirm-btn {
+  background: linear-gradient(135deg, #ff6b6b, #ff8787) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+#delete-confirm-btn:hover {
+  opacity: 0.9;
+}
+
 .sidebar {
   display: grid;
   grid-template-rows: 1.2fr 1fr;

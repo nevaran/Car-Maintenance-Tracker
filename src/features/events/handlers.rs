@@ -47,7 +47,8 @@ impl EventHandlers {
     fn refresh_session_cookie(&self, user_id: &str, mut response: Response) -> Response {
         response.headers_mut().append(
             header::SET_COOKIE,
-            HeaderValue::from_str(&crate::features::auth::service::AuthService::build_session_cookie(user_id)).unwrap(),
+            HeaderValue::from_str(&crate::features::auth::service::AuthService::build_session_cookie(user_id))
+                .expect("failed to create session cookie header"),
         );
         response
     }
@@ -99,8 +100,10 @@ impl EventHandlers {
 
         let date = match NaiveDate::parse_from_str(&date_str, "%Y-%m-%d") {
             Ok(d) => {
-                let min_date = NaiveDate::from_ymd_opt(1900, 1, 1).unwrap();
-                let max_date = NaiveDate::from_ymd_opt(2100, 12, 31).unwrap();
+                let min_date = NaiveDate::from_ymd_opt(1900, 1, 1)
+                    .expect("invalid constant min date");
+                let max_date = NaiveDate::from_ymd_opt(2100, 12, 31)
+                    .expect("invalid constant max date");
                 
                 if d < min_date || d > max_date {
                     return crate::error::AppError::BadRequest(
@@ -180,8 +183,10 @@ impl EventHandlers {
                 match NaiveDate::parse_from_str(&date_str, "%Y-%m-%d") {
                     Ok(d) => {
                         // Priority 2 Security Fix: Validate date bounds
-                        let min_date = NaiveDate::from_ymd_opt(1900, 1, 1).unwrap();
-                        let max_date = NaiveDate::from_ymd_opt(2100, 12, 31).unwrap();
+                        let min_date = NaiveDate::from_ymd_opt(1900, 1, 1)
+                            .expect("invalid constant min date");
+                        let max_date = NaiveDate::from_ymd_opt(2100, 12, 31)
+                            .expect("invalid constant max date");
                         
                         if d < min_date || d > max_date {
                             return crate::error::AppError::BadRequest(
