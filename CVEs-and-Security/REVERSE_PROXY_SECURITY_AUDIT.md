@@ -37,7 +37,7 @@
 - **Rate Limiting**: Governor crate (5 req/min) + account lockout
 - **Audit Logging**: File-based with 1000 entry cap
 - **Input Validation**: Date bounds, format validation
-- **Race Prevention**: File locking with parking_lot
+- **Race Prevention**: File locking with `tokio::sync::Mutex`
 - **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
 - **IP Extraction**: Proxy-aware (X-Real-IP, X-Forwarded-For)
 

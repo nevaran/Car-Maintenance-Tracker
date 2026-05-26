@@ -7,11 +7,13 @@ use std::collections::HashMap;
 pub struct RegisterAdminCommand {
     pub username: String,
     pub password: String,
+    pub ip: std::net::IpAddr,
 }
 
 #[derive(Debug)]
 pub struct RegisterAdminCommandResult {
     pub user: User,
+    pub cookie: String,
 }
 
 /// Command: Login user
@@ -31,7 +33,7 @@ pub struct LoginCommandResult {
 /// Command: Logout user
 #[derive(Debug, Clone)]
 pub struct LogoutCommand {
-    pub user_id: String,
+    pub session_id: String,
 }
 
 #[derive(Debug)]

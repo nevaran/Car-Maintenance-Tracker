@@ -160,11 +160,8 @@ wait
 #### Fix
 Use file locking:
 ```rust
-// Add to Cargo.toml
-parking_lot = "0.12"
-
 // In infra/user_repository.rs
-use parking_lot::Mutex;
+use tokio::sync::Mutex;
 
 pub struct FileUserRepository {
     path: String,
@@ -172,7 +169,7 @@ pub struct FileUserRepository {
 }
 
 pub async fn save_all(&self, users: &[User]) -> Result<()> {
-    let _guard = self.file_lock.lock(); // Acquire lock
+    let _guard = self.file_lock.lock().await; // Acquire lock
     
     let path = Path::new(&self.path);
     let json = serde_json::to_string_pretty(users)?;

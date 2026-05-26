@@ -11,28 +11,30 @@ use std::time::{SystemTime, Duration};
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 use serde_json::json;
+use uuid::Uuid;
 
-type ActiveSessions = Arc<Mutex<std::collections::HashMap<String, ActiveSession>>>;
+type SessionStore = Arc<Mutex<std::collections::HashMap<String, ActiveSession>>>;
 
 pub struct AuthService {
     user_repo: Arc<dyn UserRepository>,
     audit_repo: Arc<dyn AuditRepository>,
     id_gen: Arc<dyn crate::domain::IdGenerator>,
-    sessions: ActiveSessions,
+    sessions: SessionStore,
+    write_lock: Arc<Mutex<()>>,
 }
 
 impl AuthService {
     const SESSION_COOKIE_MAX_AGE: i64 = 30 * 24 * 60 * 60; // 30 days
 
     // Build the HTTP Set-Cookie header value for a user session.
-    pub fn build_session_cookie(user_id: &str) -> String {
+    pub fn build_session_cookie(session_id: &str) -> String {
         let expires = (Utc::now() + chrono::Duration::seconds(Self::SESSION_COOKIE_MAX_AGE))
             .format("%a, %d %b %Y %H:%M:%S GMT")
             .to_string();
 
         format!(
-            "user_id={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}; Expires={}",
-            user_id,
+            "session_id={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}; Expires={}",
+            session_id,
             Self::SESSION_COOKIE_MAX_AGE,
             expires
         )
@@ -49,11 +51,13 @@ impl AuthService {
             audit_repo,
             id_gen,
             sessions: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            write_lock: Arc::new(Mutex::new(())),
         }
     }
 
     // Register the initial admin user during setup.
     pub async fn register_admin(&self, cmd: RegisterAdminCommand) -> Result<RegisterAdminCommandResult> {
+        let _guard = self.write_lock.lock().await;
         let users = self.user_repo.load_all().await?;
         
         if !users.is_empty() {
@@ -75,8 +79,22 @@ impl AuthService {
         let users = vec![user.clone()];
         self.user_repo.save_all(&users).await?;
 
+        let session_id = Uuid::new_v4().to_string();
+        {
+            let mut sessions = self.sessions.lock().await;
+            sessions.insert(
+                session_id.clone(),
+                ActiveSession {
+                    user: user.clone(),
+                    ip: cmd.ip,
+                    last_seen: SystemTime::now(),
+                },
+            );
+        }
+
+        let cookie = Self::build_session_cookie(&session_id);
         info!("Admin user {} registered", cmd.username);
-        Ok(RegisterAdminCommandResult { user })
+        Ok(RegisterAdminCommandResult { user, cookie })
     }
 
     // Authenticate a user, enforce account lockout, and log authentication events.
@@ -191,11 +209,12 @@ impl AuthService {
             }),
         }).await;
 
-        // Record active session
+        // Record active session with an unpredictable session token
+        let session_id = Uuid::new_v4().to_string();
         {
             let mut sessions = self.sessions.lock().await;
             sessions.insert(
-                user.id.clone(),
+                session_id.clone(),
                 ActiveSession {
                     user: user.clone(),
                     ip: cmd.ip,
@@ -204,7 +223,7 @@ impl AuthService {
             );
         }
 
-        let cookie = Self::build_session_cookie(&user.id);
+        let cookie = Self::build_session_cookie(&session_id);
         info!("User {} logged in successfully from {}", cmd.username, cmd.ip);
         
         Ok(LoginCommandResult { user, cookie })
@@ -212,11 +231,12 @@ impl AuthService {
 
     pub async fn logout(&self, cmd: LogoutCommand) -> Result<LogoutCommandResult> {
         let mut sessions = self.sessions.lock().await;
-        sessions.remove(&cmd.user_id);
+        sessions.remove(&cmd.session_id);
         Ok(LogoutCommandResult)
     }
 
     pub async fn create_user(&self, cmd: CreateUserCommand) -> Result<CreateUserCommandResult> {
+        let _guard = self.write_lock.lock().await;
         info!("Creating user: {} with role: {}", cmd.username, cmd.role);
 
         // Validate role
@@ -246,6 +266,7 @@ impl AuthService {
     }
 
     pub async fn change_password(&self, cmd: ChangePasswordCommand) -> Result<ChangePasswordCommandResult> {
+        let _guard = self.write_lock.lock().await;
         let user = self
             .user_repo
             .find_by_id(&cmd.user_id)
@@ -335,6 +356,7 @@ impl AuthService {
     }
 
     pub async fn update_settings(&self, cmd: UpdateSettingsCommand) -> Result<UpdateSettingsCommandResult> {
+        let _guard = self.write_lock.lock().await;
         let mut user = self
             .user_repo
             .find_by_id(&cmd.user_id)
@@ -354,35 +376,40 @@ impl AuthService {
 
     // Queries
     pub async fn get_current_user(&self, query: GetCurrentUserQuery) -> Result<GetCurrentUserQueryResult> {
-        // Extract user_id from cookie with proper validation
-        let mut user_id = None;
+        // Extract session_id from cookie with proper validation
+        let mut session_id = None;
         
         for part in query.cookie.split(';') {
             let part = part.trim();
-            if let Some(id) = part.strip_prefix("user_id=") {
-                // Validate the user_id format before using it
+            if let Some(id) = part.strip_prefix("session_id=") {
                 if !id.is_empty() && id.len() < 256 {
-                    user_id = Some(id);
+                    session_id = Some(id.to_string());
                 }
-                break; // Only use the first user_id cookie
+                break; // Only use the first session_id cookie
             }
         }
         
-        let user_id = user_id
+        let session_id = session_id
             .ok_or_else(|| AppError::Unauthorized("Not logged in".to_string()))?;
 
-        debug!("Extracted user_id: {}", user_id);
-        
-        let user = self.user_repo.find_by_id(user_id).await?;
-        
-        if let Some(user) = user {
-            // Update last_seen
-            let mut sessions = self.sessions.lock().await;
-            if let Some(session) = sessions.get_mut(&user.id) {
-                session.last_seen = SystemTime::now();
+        debug!("Extracted session_id: {}", session_id);
+
+        let mut sessions = self.sessions.lock().await;
+        if let Some(session) = sessions.get_mut(&session_id) {
+            if SystemTime::now().duration_since(session.last_seen)
+                .unwrap_or_default()
+                .as_secs() as i64
+                > Self::SESSION_COOKIE_MAX_AGE
+            {
+                sessions.remove(&session_id);
+                return Err(AppError::Unauthorized("Session expired".to_string()));
             }
-            
-            return Ok(GetCurrentUserQueryResult { user });
+
+            session.last_seen = SystemTime::now();
+            return Ok(GetCurrentUserQueryResult {
+                user: session.user.clone(),
+                session_id,
+            });
         }
 
         Err(AppError::Unauthorized("User session invalid".to_string()))

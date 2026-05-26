@@ -30,33 +30,55 @@ impl AuthHandlers {
     }
 
     // Build the Set-Cookie header to maintain session state for a user
-    fn session_cookie_header(&self, user_id: &str) -> HeaderValue {
-        HeaderValue::from_str(&AuthService::build_session_cookie(user_id))
+    fn session_cookie_header(&self, session_id: &str) -> HeaderValue {
+        HeaderValue::from_str(&AuthService::build_session_cookie(session_id))
             .expect("failed to create session cookie header")
     }
 
     // Append a refreshed session cookie to an existing HTTP response
-    fn refresh_cookie_response<T: IntoResponse>(&self, user_id: &str, response: T) -> Response {
+    fn refresh_cookie_response<T: IntoResponse>(&self, session_id: &str, response: T) -> Response {
         let mut response = response.into_response();
-        response.headers_mut().append(header::SET_COOKIE, self.session_cookie_header(user_id));
+        response.headers_mut().append(header::SET_COOKIE, self.session_cookie_header(session_id));
         response
+    }
+
+    fn extract_session_id(&self, headers: &HeaderMap) -> std::result::Result<String, crate::error::AppError> {
+        if let Some(cookie) = headers.get("cookie") {
+            let cookie_str = cookie
+                .to_str()
+                .map_err(|_| crate::error::AppError::Unauthorized("Invalid cookie".to_string()))?;
+
+            for part in cookie_str.split(';') {
+                let part = part.trim();
+                if let Some(id) = part.strip_prefix("session_id=") {
+                    if !id.is_empty() && id.len() < 256 {
+                        return Ok(id.to_string());
+                    }
+                }
+            }
+        }
+        Err(crate::error::AppError::Unauthorized("Not logged in".to_string()))
     }
 
     // Handle initial admin registration and return a logged-in admin session
     pub async fn register_admin(
         &self,
+        headers: HeaderMap,
         Json(payload): Json<CreateUserRequest>,
     ) -> Response {
+        let ip = self.ip_extractor.extract(&headers);
         let cmd = RegisterAdminCommand {
             username: payload.username,
             password: payload.password,
+            ip,
         };
 
         match self.service.register_admin(cmd).await {
             Ok(result) => {
                 (
                     StatusCode::CREATED,
-                    [(header::SET_COOKIE, self.session_cookie_header(&result.user.id))],
+                    [(header::SET_COOKIE, HeaderValue::from_str(&result.cookie)
+                        .expect("invalid cookie header"))],
                     Json(result.user),
                 )
                     .into_response()
@@ -99,9 +121,9 @@ impl AuthHandlers {
     }
 
     pub async fn logout(&self, headers: HeaderMap) -> Response {
-        if let Ok(user) = self.get_current_user_internal(&headers).await {
+        if let Ok(session_id) = self.extract_session_id(&headers) {
             let cmd = LogoutCommand {
-                user_id: user.id,
+                session_id,
             };
             let _ = self.service.logout(cmd).await;
         }
@@ -110,7 +132,7 @@ impl AuthHandlers {
             StatusCode::OK,
             [(
                 header::SET_COOKIE,
-                "user_id=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Strict",
+                "session_id=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Strict",
             )],
         )
             .into_response()
@@ -118,11 +140,10 @@ impl AuthHandlers {
 
     pub async fn get_current_user(&self, headers: HeaderMap) -> Response {
         match self.get_current_user_internal(&headers).await {
-            Ok(user) => {
+            Ok((user, session_id)) => {
                 debug!("Current user: {}", user.username);
-                let user_id = user.id.clone();
                 let response = (StatusCode::OK, Json(user)).into_response();
-                self.refresh_cookie_response(&user_id, response)
+                self.refresh_cookie_response(&session_id, response)
             }
             Err(e) => e.into_response(),
         }
@@ -134,7 +155,7 @@ impl AuthHandlers {
         Json(payload): Json<CreateUserRequest>,
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
-            Ok(admin) => {
+            Ok((admin, session_id)) => {
                 if !admin.is_admin() {
                     return crate::error::AppError::Forbidden("Admin required".to_string()).into_response();
                 }
@@ -148,7 +169,7 @@ impl AuthHandlers {
 
                 match self.service.create_user(cmd).await {
                     Ok(result) => self.refresh_cookie_response(
-                        &admin.id,
+                        &session_id,
                         (StatusCode::CREATED, Json(result.user)),
                     ),
                     Err(e) => e.into_response(),
@@ -164,7 +185,7 @@ impl AuthHandlers {
         Json(payload): Json<ChangePasswordRequest>,
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
-            Ok(user) => {
+            Ok((user, session_id)) => {
                 let user_id = user.id;
                 let cmd = ChangePasswordCommand {
                     user_id: user_id.clone(),
@@ -174,7 +195,7 @@ impl AuthHandlers {
 
                 match self.service.change_password(cmd).await {
                     Ok(_) => self.refresh_cookie_response(
-                        &user_id,
+                        &session_id,
                         (StatusCode::OK, Json(serde_json::json!({"success": true}))),
                     ),
                     Err(e) => e.into_response(),
@@ -190,7 +211,7 @@ impl AuthHandlers {
         Json(payload): Json<UpdateSettingsRequest>,
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
-            Ok(user) => {
+            Ok((user, session_id)) => {
                 let user_id = user.id;
                 let cmd = UpdateSettingsCommand {
                     user_id: user_id.clone(),
@@ -199,7 +220,7 @@ impl AuthHandlers {
 
                 match self.service.update_settings(cmd).await {
                     Ok(result) => self.refresh_cookie_response(
-                        &user_id,
+                        &session_id,
                         (StatusCode::OK, Json(result.user)),
                     ),
                     Err(e) => e.into_response(),
@@ -211,7 +232,7 @@ impl AuthHandlers {
 
     pub async fn list_active_sessions(&self, headers: HeaderMap) -> Response {
         match self.get_current_user_internal(&headers).await {
-            Ok(user) => {
+            Ok((user, session_id)) => {
                 if !user.is_admin() {
                     return crate::error::AppError::Forbidden("Admin required".to_string()).into_response();
                 }
@@ -219,7 +240,7 @@ impl AuthHandlers {
                 let query = ListActiveSessionsQuery;
                 match self.service.list_active_sessions(query).await {
                     Ok(result) => self.refresh_cookie_response(
-                        &user.id,
+                        &session_id,
                         (StatusCode::OK, Json(result.sessions)),
                     ),
                     Err(e) => e.into_response(),
@@ -229,7 +250,7 @@ impl AuthHandlers {
         }
     }
 
-    async fn get_current_user_internal(&self, headers: &HeaderMap) -> Result<crate::domain::User> {
+    async fn get_current_user_internal(&self, headers: &HeaderMap) -> Result<(crate::domain::User, String)> {
         if let Some(cookie) = headers.get("cookie") {
             let cookie_str = cookie
                 .to_str()
@@ -240,7 +261,7 @@ impl AuthHandlers {
             };
 
             let result = self.service.get_current_user(query).await?;
-            return Ok(result.user);
+            return Ok((result.user, result.session_id));
         }
 
         Err(crate::error::AppError::Unauthorized("Not logged in".to_string()))

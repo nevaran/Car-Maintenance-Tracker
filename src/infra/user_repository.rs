@@ -2,9 +2,8 @@
 use crate::domain::User;
 use crate::error::Result;
 use std::path::Path;
-use tokio::fs;
+use tokio::{fs, sync::Mutex};
 use tracing::{debug, error};
-use parking_lot::Mutex;
 
 /// User repository trait
 #[async_trait::async_trait]
@@ -34,7 +33,8 @@ impl FileUserRepository {
 impl UserRepository for FileUserRepository {
     async fn load_all(&self) -> Result<Vec<User>> {
         let path = Path::new(&self.path);
-        
+        let _guard = self.file_lock.lock().await;
+
         let content = fs::read_to_string(path)
             .await
             .unwrap_or_else(|_| "[]".to_string());
@@ -49,15 +49,12 @@ impl UserRepository for FileUserRepository {
     }
 
     async fn save_all(&self, users: &[User]) -> Result<()> {
-        // Serialize JSON while holding the lock to ensure atomicity
-        let json = {
-            let _guard = self.file_lock.lock();
-            serde_json::to_string_pretty(users)
-                .map_err(|_| crate::error::AppError::InternalError("Failed to serialize users".to_string()))?
-        }; // Lock is released here
-        
         let path = Path::new(&self.path);
-        
+        let _guard = self.file_lock.lock().await;
+
+        let json = serde_json::to_string_pretty(users)
+            .map_err(|_| crate::error::AppError::InternalError("Failed to serialize users".to_string()))?;
+
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)
                 .await
@@ -66,11 +63,19 @@ impl UserRepository for FileUserRepository {
 
         debug!("Saving users JSON: {} bytes", json.len());
 
-        fs::write(path, json)
+        let tmp_path = path.with_extension("json.tmp");
+        fs::write(&tmp_path, &json)
             .await
             .map_err(|err| {
-                error!(error = ?err, path = %self.path, "failed to write users file");
+                error!(error = ?err, path = %self.path, "failed to write temp users file");
                 crate::error::AppError::InternalError("Failed to write users file".to_string())
+            })?;
+
+        fs::rename(&tmp_path, path)
+            .await
+            .map_err(|err| {
+                error!(error = ?err, path = %self.path, "failed to atomically rename users file");
+                crate::error::AppError::InternalError("Failed to save users file".to_string())
             })?;
 
         debug!("Saved {} users to {}", users.len(), self.path);

@@ -109,9 +109,9 @@ async fn main() {
                 let h = health_clone1.clone();
                 async move { h.check_setup().await }
             })
-            .post(move |body| {
+            .post(move |headers, body| {
                 let a = auth_clone1.clone();
-                async move { a.register_admin(body).await }
+                async move { a.register_admin(headers, body).await }
             }),
         )
         .route(

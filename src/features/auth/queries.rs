@@ -11,6 +11,7 @@ pub struct GetCurrentUserQuery {
 #[derive(Debug)]
 pub struct GetCurrentUserQueryResult {
     pub user: User,
+    pub session_id: String,
 }
 
 /// Query: List active sessions

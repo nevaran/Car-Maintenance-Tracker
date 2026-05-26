@@ -24,8 +24,8 @@ impl EventHandlers {
         Self { service, auth_service }
     }
 
-    // Authenticate the request by validating the session cookie and returning the current user
-    async fn authenticate_request(&self, headers: &HeaderMap) -> Result<crate::domain::User, Response> {
+    // Authenticate the request by validating the session cookie and returning the current user and session token
+    async fn authenticate_request(&self, headers: &HeaderMap) -> Result<(crate::domain::User, String), Response> {
         if let Some(cookie) = headers.get("cookie") {
             let cookie_str = cookie
                 .to_str()
@@ -36,7 +36,7 @@ impl EventHandlers {
             };
 
             match self.auth_service.get_current_user(query).await {
-                Ok(result) => Ok(result.user),
+                Ok(result) => Ok((result.user, result.session_id)),
                 Err(e) => Err(e.into_response()),
             }
         } else {
@@ -44,10 +44,10 @@ impl EventHandlers {
         }
     }
 
-    fn refresh_session_cookie(&self, user_id: &str, mut response: Response) -> Response {
+    fn refresh_session_cookie(&self, session_id: &str, mut response: Response) -> Response {
         response.headers_mut().append(
             header::SET_COOKIE,
-            HeaderValue::from_str(&crate::features::auth::service::AuthService::build_session_cookie(user_id))
+            HeaderValue::from_str(&crate::features::auth::service::AuthService::build_session_cookie(session_id))
                 .expect("failed to create session cookie header"),
         );
         response
@@ -56,11 +56,11 @@ impl EventHandlers {
     // List all events for the authenticated user
     pub async fn list_events(&self, headers: HeaderMap) -> Response {
         match self.authenticate_request(&headers).await {
-            Ok(user) => {
+            Ok((_user, session_id)) => {
                 let query = ListEventsQuery;
                 match self.service.list_events(query).await {
                     Ok(result) => self.refresh_session_cookie(
-                        &user.id,
+                        &session_id,
                         (StatusCode::OK, Json(result.events)).into_response(),
                     ),
                     Err(e) => e.into_response(),
@@ -76,8 +76,8 @@ impl EventHandlers {
         headers: HeaderMap,
         Json(payload): Json<CreateEventRequest>,
     ) -> Response {
-        let user = match self.authenticate_request(&headers).await {
-            Ok(u) => u,
+        let (user, session_id) = match self.authenticate_request(&headers).await {
+            Ok(pair) => pair,
             Err(e) => return e,
         };
 
@@ -151,7 +151,7 @@ impl EventHandlers {
 
         match self.service.create_event(cmd).await {
             Ok(result) => self.refresh_session_cookie(
-                &user.id,
+                &session_id,
                 (StatusCode::CREATED, Json(result.event)).into_response(),
             ),
             Err(e) => e.into_response(),
@@ -165,8 +165,8 @@ impl EventHandlers {
         Path(id): Path<String>,
         Json(payload): Json<UpdateEventRequest>,
     ) -> Response {
-        let user = match self.authenticate_request(&headers).await {
-            Ok(u) => u,
+        let (user, session_id) = match self.authenticate_request(&headers).await {
+            Ok(pair) => pair,
             Err(e) => return e,
         };
 
@@ -221,7 +221,7 @@ impl EventHandlers {
 
         match self.service.update_event(cmd).await {
             Ok(result) => self.refresh_session_cookie(
-                &user.id,
+                &session_id,
                 (StatusCode::OK, Json(result.event)).into_response(),
             ),
             Err(e) => e.into_response(),
@@ -230,8 +230,8 @@ impl EventHandlers {
 
     // Delete an event and any derived override events associated with it
     pub async fn delete_event(&self, headers: HeaderMap, Path(id): Path<String>) -> Response {
-        let user = match self.authenticate_request(&headers).await {
-            Ok(u) => u,
+        let (user, session_id) = match self.authenticate_request(&headers).await {
+            Ok(pair) => pair,
             Err(e) => return e,
         };
 
@@ -244,7 +244,7 @@ impl EventHandlers {
         let cmd = DeleteEventCommand { id };
         match self.service.delete_event(cmd).await {
             Ok(_) => self.refresh_session_cookie(
-                &user.id,
+                &session_id,
                 (StatusCode::OK, Json(serde_json::json!({"success": true}))).into_response(),
             ),
             Err(e) => e.into_response(),

@@ -95,6 +95,16 @@ function pad(value) {
   return String(value).padStart(2, '0');
 }
 
+function escapeHtml(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Toast notification system for user feedback messages
 function showToast(message, type = 'info', duration = 3000) {
   const container = document.getElementById('toast-container');
@@ -514,7 +524,7 @@ function renderCalendar() {
     dot.innerHTML = '';
     if (occurrences.length) {
       const visibleEvents = occurrences.slice(0, 2);
-      const lines = visibleEvents.map((evt) => `${evt.title}${evt.repeat === 'yearly' ? ' 🔁' : ''}`);
+      const lines = visibleEvents.map((evt) => `${escapeHtml(evt.title)}${evt.repeat === 'yearly' ? ' 🔁' : ''}`);
       if (occurrences.length > visibleEvents.length) {
         const hiddenCount = occurrences.length - visibleEvents.length;
         lines.push(`+${hiddenCount} more`);
@@ -524,7 +534,7 @@ function renderCalendar() {
       chip.className = `event-chip${occurrences.some(evt => evt.done) ? ' done' : ''}`;
       chip.textContent = lines.join('\n');
       dot.appendChild(chip);
-      cell.title = occurrences.map((evt) => `${evt.title} (${evt.occurrence}) ${evt.done ? '[DONE]' : ''}`).join('\n');
+      cell.title = occurrences.map((evt) => `${escapeHtml(evt.title)} (${evt.occurrence}) ${evt.done ? '[DONE]' : ''}`).join('\n');
     } else {
       cell.title = 'No events';
     }
@@ -608,21 +618,21 @@ function buildTimelineItems(searchFilter = '') {
       <div class="timeline-item${evt.done ? ' done' : ''}${isPast ? ' is-past' : ''}">
         <div class="timeline-strip ${stripClass}"></div>
         ${canModify ? `<button class="done-btn-large${evt.done ? ' completed' : ''}"
-          data-id="${evt.id}"
-          data-parent-id="${evt.origin_id || evt.parentId || ''}"
-          data-origin-id="${evt.origin_id || evt.parentId || ''}"
+          data-id="${escapeHtml(evt.id)}"
+          data-parent-id="${escapeHtml(evt.origin_id || evt.parentId || '')}"
+          data-origin-id="${escapeHtml(evt.origin_id || evt.parentId || '')}"
           data-generated="${evt.isGenerated ? 'true' : 'false'}"
           data-is-override="${evt.origin_id ? 'true' : 'false'}"
-          data-occurrence-date="${evt.occurrence}"
+          data-occurrence-date="${escapeHtml(evt.occurrence)}"
           data-done="${isDone}"
-          title="${evt.done ? gettext('markAsPending') : gettext('markAsDone')}"
-          aria-label="${evt.done ? gettext('markAsPending') : gettext('markAsCompleted')}">
+          title="${escapeHtml(evt.done ? gettext('markAsPending') : gettext('markAsDone'))}"
+          aria-label="${escapeHtml(evt.done ? gettext('markAsPending') : gettext('markAsCompleted'))}">
           ${evt.done ? `<span class="button-icon">✓</span><span class="button-text">${gettext('doneLabel')}</span>` : `<span class="button-icon">○</span><span class="button-text">${gettext('pendingLabel')}</span>`}
         </button>` : ''}
         <div class="timeline-content">
-          <time datetime="${evt.occurrence}">${evt.occurrence}</time>
-          <strong>${evt.title}</strong>
-          <span class="timeline-meta">${evt.repeat === 'yearly' ? gettext('yearlyReminder') : gettext('oneTimeReminder')} • €${Number(evt.cost).toFixed(2)} • ${evt.notes || gettext('noNotes')}</span>
+          <time datetime="${escapeHtml(evt.occurrence)}">${escapeHtml(evt.occurrence)}</time>
+          <strong>${escapeHtml(evt.title)}</strong>
+          <span class="timeline-meta">${evt.repeat === 'yearly' ? escapeHtml(gettext('yearlyReminder')) : escapeHtml(gettext('oneTimeReminder'))} • €${Number(evt.cost).toFixed(2)} • ${escapeHtml(evt.notes || gettext('noNotes'))}</span>
         </div>
         <div class="item-actions">
           ${actionButtons}
@@ -1102,7 +1112,7 @@ function fetchActiveUsers() {
   fetch('/api/active_users', { credentials: 'include' })
     .then(r => r.json())
     .then(list => {
-      div.innerHTML = `<h4>${gettext('activeUsers')}</h4>` + list.map(u => `<div>${u.username} (${gettext('fromIP')} ${u.ip})</div>`).join('');
+      div.innerHTML = `<h4>${gettext('activeUsers')}</h4>` + list.map(u => `<div>${escapeHtml(u.username)} (${escapeHtml(gettext('fromIP'))} ${escapeHtml(u.ip)})</div>`).join('');
     })
     .catch(err => {
       console.error('Failed to load active users:', err);
@@ -1120,7 +1130,7 @@ function initializeUserUI() {
     }
   });
   dom.userMenu.innerHTML = `
-    <div class="current-user">${state.currentUser.username}</div>
+    <div class="current-user">${escapeHtml(state.currentUser.username)}</div>
     <button id="logout-button">${gettext('logout')}</button>
     <button id="change-password-button">${gettext('changePassword')}</button>
     ${state.currentUser.role === 'admin' ? `<button id="create-user-button">${gettext('createUser')}</button>` : ''}

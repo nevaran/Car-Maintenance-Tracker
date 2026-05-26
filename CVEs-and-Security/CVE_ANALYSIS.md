@@ -1,6 +1,13 @@
 # Car Maintenance Tracker - Security Issues Summary
 
-## 🚨 CRITICAL VULNERABILITIES (Do First)
+## � Fix Status
+- Authentication is now enforced on all `/api/events` endpoints.
+- Login brute-force protection is active via rate limiting and account lockout.
+- Setup race conditions are mitigated by serialized user store access.
+- Session handling now uses non-predictable `session_id` tokens instead of raw user IDs.
+- Frontend event and user-generated content is escaped to prevent XSS.
+
+## �🚨 CRITICAL VULNERABILITIES (Do First)
 
 ### 1. **No Authentication on Event API** 
 - **Risk**: Anyone can READ all events, CREATE/MODIFY/DELETE any event

@@ -61,12 +61,11 @@ if self.login_limiter.check().is_err() {
 **Status**: FIXED
 
 **Changes**:
-- Added `parking_lot` crate for file-level locking
+- Added async file locking via `tokio::sync::Mutex`
 - `FileUserRepository` now uses `Mutex` to serialize file access
 - Prevents concurrent setup requests from creating multiple admin accounts
 
 **Files Modified**:
-- [Cargo.toml](Cargo.toml) - Added `parking_lot = "0.12"`
 - [src/infra/user_repository.rs](src/infra/user_repository.rs) - Added file locking
 
 **Code Example**:
