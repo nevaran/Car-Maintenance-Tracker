@@ -666,10 +666,13 @@ function renderStats(searchFilter = '') {
   // Filter by search term if provided
   if (searchFilter.trim()) {
     const filter = searchFilter.toLowerCase();
-    occurrences = occurrences.filter((evt) => 
-      evt.title.toLowerCase().includes(filter) || 
-      (evt.notes && evt.notes.toLowerCase().includes(filter))
-    );
+    const isReverseSearch = filter.startsWith('!');
+    const actualFilter = isReverseSearch ? filter.slice(1) : filter;
+    occurrences = occurrences.filter((evt) => {
+      const matches = evt.title.toLowerCase().includes(actualFilter) ||
+        (evt.notes && evt.notes.toLowerCase().includes(actualFilter));
+      return isReverseSearch ? !matches : matches;
+    });
   }
   
   const total = occurrences.reduce((sum, evt) => sum + Number(evt.cost || 0), 0);
