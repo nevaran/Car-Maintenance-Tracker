@@ -1,7 +1,7 @@
 // Authentication service implementing business rules and repository coordination.
 use super::commands::*;
 use super::queries::*;
-use crate::domain::{ActiveSession, User, UserRole, AuditRepository, AuditLog, LoginAttempt};
+use crate::domain::{ActiveSession, User, UserRole, AuditRepository, AuditLog, LoginAttempt, PersistentSession, SessionRepository};
 use crate::error::{AppError, Result};
 use crate::infra::UserRepository;
 use bcrypt::{hash, verify, DEFAULT_COST};
@@ -9,7 +9,7 @@ use chrono::Utc;
 use std::sync::Arc;
 use std::time::{SystemTime, Duration};
 use tokio::sync::Mutex;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -18,6 +18,7 @@ type SessionStore = Arc<Mutex<std::collections::HashMap<String, ActiveSession>>>
 pub struct AuthService {
     user_repo: Arc<dyn UserRepository>,
     audit_repo: Arc<dyn AuditRepository>,
+    session_repo: Arc<dyn SessionRepository>,
     id_gen: Arc<dyn crate::domain::IdGenerator>,
     sessions: SessionStore,
     write_lock: Arc<Mutex<()>>,
@@ -44,15 +45,53 @@ impl AuthService {
     pub fn new(
         user_repo: Arc<dyn UserRepository>,
         audit_repo: Arc<dyn AuditRepository>,
+        session_repo: Arc<dyn SessionRepository>,
         id_gen: Arc<dyn crate::domain::IdGenerator>,
     ) -> Self {
         Self {
             user_repo,
             audit_repo,
+            session_repo,
             id_gen,
             sessions: Arc::new(Mutex::new(std::collections::HashMap::new())),
             write_lock: Arc::new(Mutex::new(())),
         }
+    }
+
+    pub async fn load_sessions(&self) -> Result<()> {
+        let persisted = self.session_repo.load_all().await?;
+        let mut sessions = self.sessions.lock().await;
+        sessions.clear();
+
+        let now = SystemTime::now();
+        let expiry_secs = Duration::from_secs(Self::SESSION_COOKIE_MAX_AGE as u64);
+
+        for session in persisted {
+            let active = session.to_active_session();
+            if now.duration_since(active.last_seen).unwrap_or_default() <= expiry_secs {
+                sessions.insert(session.session_id.clone(), active);
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn persist_sessions(&self, sessions: &std::collections::HashMap<String, ActiveSession>) -> Result<()> {
+        let persisted: Vec<PersistentSession> = sessions
+            .iter()
+            .map(|(session_id, session)| PersistentSession {
+                session_id: session_id.clone(),
+                user: session.user.clone(),
+                ip: session.ip,
+                last_seen: session
+                    .last_seen
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+            })
+            .collect();
+
+        self.session_repo.save_all(&persisted).await
     }
 
     // Register the initial admin user during setup.
@@ -90,6 +129,7 @@ impl AuthService {
                     last_seen: SystemTime::now(),
                 },
             );
+            self.persist_sessions(&sessions).await?;
         }
 
         let cookie = Self::build_session_cookie(&session_id);
@@ -221,6 +261,7 @@ impl AuthService {
                     last_seen: SystemTime::now(),
                 },
             );
+            self.persist_sessions(&sessions).await?;
         }
 
         let cookie = Self::build_session_cookie(&session_id);
@@ -232,6 +273,7 @@ impl AuthService {
     pub async fn logout(&self, cmd: LogoutCommand) -> Result<LogoutCommandResult> {
         let mut sessions = self.sessions.lock().await;
         sessions.remove(&cmd.session_id);
+        self.persist_sessions(&sessions).await?;
         Ok(LogoutCommandResult)
     }
 
@@ -402,12 +444,17 @@ impl AuthService {
                 > Self::SESSION_COOKIE_MAX_AGE
             {
                 sessions.remove(&session_id);
+                self.persist_sessions(&sessions).await.ok();
                 return Err(AppError::Unauthorized("Session expired".to_string()));
             }
 
-            session.last_seen = SystemTime::now();
+            let user = {
+                session.last_seen = SystemTime::now();
+                session.user.clone()
+            };
+            self.persist_sessions(&sessions).await?;
             return Ok(GetCurrentUserQueryResult {
-                user: session.user.clone(),
+                user,
                 session_id,
             });
         }
@@ -457,8 +504,14 @@ impl AuthService {
             })
             .collect();
 
-        for k in expired_keys {
-            sessions.remove(&k);
+        if !expired_keys.is_empty() {
+            for k in expired_keys {
+                sessions.remove(&k);
+            }
+
+            if let Err(err) = self.persist_sessions(&sessions).await {
+                error!(error = ?err, "failed to persist session cleanup");
+            }
         }
     }
 }

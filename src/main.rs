@@ -15,13 +15,13 @@ use axum::http::HeaderValue;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use domain::IpExtractor;
 use features::{AuthHandlers, AuthService, EventHandlers, EventService, HealthHandlers};
 use infra::{
-    FileEventRepository, FileUserRepository, FileAuditRepository, ProxyAwareIpExtractor, TimestampIdGenerator, BackupManager,
+    FileEventRepository, FileUserRepository, FileAuditRepository, FileSessionRepository, ProxyAwareIpExtractor, TimestampIdGenerator, BackupManager,
 };
 
 #[tokio::main]
@@ -40,11 +40,20 @@ async fn main() {
     let user_repo = Arc::new(FileUserRepository::new("data/users.json"));
     let event_repo = Arc::new(FileEventRepository::new("data/events.json"));
     let audit_repo = Arc::new(FileAuditRepository::new("data/audit.json"));
+    let session_repo = Arc::new(FileSessionRepository::new("data/sessions.json"));
     let id_gen = Arc::new(TimestampIdGenerator);
     let ip_extractor = Arc::new(ProxyAwareIpExtractor) as Arc<dyn IpExtractor>;
 
     // Initialize services
-    let auth_service = Arc::new(AuthService::new(user_repo.clone(), audit_repo.clone(), id_gen.clone()));
+    let auth_service = Arc::new(AuthService::new(
+        user_repo.clone(),
+        audit_repo.clone(),
+        session_repo.clone(),
+        id_gen.clone(),
+    ));
+    if let Err(err) = auth_service.load_sessions().await {
+        error!(error = ?err, "Failed to load persisted sessions");
+    }
     let event_service = Arc::new(EventService::new(event_repo, id_gen));
 
     // Background pruning task to cleanup expired sessions periodically

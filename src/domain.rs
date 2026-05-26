@@ -74,6 +74,30 @@ pub struct ActiveSession {
     pub last_seen: SystemTime,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PersistentSession {
+    pub session_id: String,
+    pub user: User,
+    pub ip: IpAddr,
+    pub last_seen: u64,
+}
+
+impl PersistentSession {
+    pub fn to_active_session(&self) -> ActiveSession {
+        ActiveSession {
+            user: self.user.clone(),
+            ip: self.ip,
+            last_seen: SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(self.last_seen),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+pub trait SessionRepository: Send + Sync {
+    async fn load_all(&self) -> Result<Vec<PersistentSession>>;
+    async fn save_all(&self, sessions: &[PersistentSession]) -> Result<()>;
+}
+
 /// Audit log entry for security events
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuditLog {
