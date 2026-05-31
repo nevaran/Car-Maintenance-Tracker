@@ -403,8 +403,15 @@ textarea {
   color: #d7e1ff;
   padding: 0.15em 0.35em;
   border-radius: 0.8em;
-  margin-left: 0.4em;
+  margin-left: 0.25em;
   font-size: 0.9rem;
+}
+
+/* Mobile: distinct styling for end-date shown in timeline (root events) */
+.timeline-end-date {
+  color: #ffd27a;
+  margin-left: 0.25em;
+  font-weight: 600;
 }
 
 .timeline-item strong {
@@ -423,5 +430,14 @@ textarea {
   overflow-wrap: anywhere;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Mobile: visual treatment for disabled end-date input */
+#end-date-field input[disabled],
+#end-date-field input:disabled {
+  opacity: 0.6;
+  background: rgba(255,255,255,0.02);
+  cursor: not-allowed;
+  border-color: rgba(255,255,255,0.04);
 }
 

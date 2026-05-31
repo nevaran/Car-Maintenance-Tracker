@@ -15,6 +15,7 @@
   "dateLabel": "วันที่",
   "endDateLabel": "วันที่สิ้นสุด",
   "endDatePlaceholder": "(ไม่บังคับ) YYYY-MM-DD",
+  "endDateLockedTooltip": "ไม่สามารถแก้ไขวันที่สิ้นสุดสำหรับเหตุการณ์ย่อยได้ กรุณาแก้ไขเหตุการณ์ต้นฉบับ",
   "noEndDate": "ไม่มีวันที่สิ้นสุด",
   "costLabel": "ค่าใช้จ่าย",
   "repeatLabel": "ทำซ้ำ",

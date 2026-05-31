@@ -15,6 +15,7 @@
   "dateLabel": "Date o’ sail",
   "endDateLabel": "Final day o’ voyage",
   "endDatePlaceholder": "(optional) YYYY-MM-DD",
+  "endDateLockedTooltip": "Ye can't change the end date fer child events; change th' root event instead.",
   "noEndDate": "No final day",
   "costLabel": "Cost in doubloons",
   "repeatLabel": "Repeat yer tale",

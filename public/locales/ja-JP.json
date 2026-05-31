@@ -15,6 +15,7 @@
   "dateLabel": "日付",
   "endDateLabel": "終了日",
   "endDatePlaceholder": "（オプション）YYYY-MM-DD",
+  "endDateLockedTooltip": "終了日は子イベントでは編集できません。元のイベントを編集してください。",
   "noEndDate": "終了日なし",
   "costLabel": "費用",
   "repeatLabel": "繰り返し",

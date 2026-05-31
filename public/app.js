@@ -186,6 +186,20 @@ function updateEndDateVisibility() {
   dom.endDateField.style.display = isYearly ? 'block' : 'none';
   if (!isYearly) {
     setEndDateValue('');
+    if (dom.endDate) {
+      dom.endDate.title = '';
+      dom.endDate.removeAttribute('aria-label');
+    }
+  }
+  // If end-date exists and is disabled, ensure tooltip is present
+  if (dom.endDate) {
+    if (dom.endDate.disabled) {
+      dom.endDate.title = gettext('endDateLockedTooltip');
+      dom.endDate.setAttribute('aria-label', gettext('endDateLockedTooltip'));
+    } else if (dom.endDate.title === gettext('endDateLockedTooltip')) {
+      dom.endDate.title = '';
+      dom.endDate.removeAttribute('aria-label');
+    }
   }
 }
 
@@ -649,7 +663,9 @@ function buildTimelineItems(searchFilter = '') {
     const rootEvent = (evt.origin_id || evt.parentId)
       ? state.events.find((item) => item.id === (evt.origin_id || evt.parentId))
       : null;
-    const rootDateHint = rootEvent ? ` <span class="timeline-root-date">(${escapeHtml(rootEvent.date)})</span>` : '';
+    const rootDateHint = rootEvent ? `<span class="timeline-root-date">(${escapeHtml(rootEvent.date)})</span>` : '';
+    const isRootEntry = !(evt.origin_id || evt.parentId);
+    const endDateHint = (isRootEntry && evt.end_date) ? `<span class="timeline-end-date">→ ${escapeHtml(evt.end_date)}</span>` : '';
     const actionButtons = canModify ? `
         <button class="edit" data-id="${evt.id}" data-origin-id="${evt.origin_id || evt.parentId || ''}" data-generated="${evt.isGenerated ? 'true' : 'false'}" data-is-override="${evt.origin_id ? 'true' : 'false'}" data-occurrence-date="${evt.occurrence}">${gettext('edit')}</button>
         <button class="delete" data-id="${evt.id}">${gettext('delete')}</button>
@@ -670,7 +686,7 @@ function buildTimelineItems(searchFilter = '') {
           ${evt.done ? `<span class="button-icon">✓</span><span class="button-text">${gettext('doneLabel')}</span>` : `<span class="button-icon">○</span><span class="button-text">${gettext('pendingLabel')}</span>`}
         </button>` : ''}
         <div class="timeline-content">
-          <time datetime="${escapeHtml(evt.occurrence)}">${escapeHtml(evt.occurrence)}${rootDateHint}</time>
+          <time datetime="${escapeHtml(evt.occurrence)}">${escapeHtml(evt.occurrence)}${rootDateHint}${endDateHint}</time>
           <strong>${escapeHtml((evt.repeat === 'yearly' ? ((evt.origin_id || evt.parentId) ? '☆ ' : '★ ') : '') + evt.title)}</strong>
           <span class="timeline-meta">${evt.repeat === 'yearly' ? escapeHtml(gettext('yearlyReminder')) : escapeHtml(gettext('oneTimeReminder'))} • €${Number(evt.cost).toFixed(2)} • ${escapeHtml(evt.notes || gettext('noNotes'))}</span>
         </div>
@@ -859,6 +875,13 @@ function resetForm() {
   dom.done.checked = false;
   dom.title.readOnly = false;
   dom.repeat.disabled = false;
+  // Ensure end-date is editable after reset
+  if (dom.endDate) {
+    dom.endDate.readOnly = false;
+    dom.endDate.disabled = false;
+    dom.endDate.title = '';
+    dom.endDate.removeAttribute('aria-label');
+  }
   updateEndDateVisibility();
 }
 
@@ -890,7 +913,7 @@ dom.form.addEventListener('submit', async (event) => {
 
   const payload = {
     date: dateValue,
-    end_date: dom.endDate.value ? dom.endDate.value : undefined,
+    end_date: (dom.endDate && !dom.endDate.disabled && dom.endDate.value) ? dom.endDate.value : undefined,
     cost: costValue,
     notes: dom.notes.value.trim(),
     done: dom.done.checked,
@@ -954,6 +977,18 @@ function loadEventForEdit(id, originId, occurrenceDate, isGenerated, isOverride)
   dom.cost.value = Number((actualOverride ? event : sourceEvent)?.cost || 0).toFixed(2);
   dom.repeat.value = repeatValue;
   updateEndDateVisibility();
+  // Make end-date read-only/disabled when editing a non-root (override) event
+  dom.endDate.readOnly = isReadOnly;
+  dom.endDate.disabled = isReadOnly;
+  if (dom.endDate) {
+    if (isReadOnly) {
+      dom.endDate.title = gettext('endDateLockedTooltip');
+      dom.endDate.setAttribute('aria-label', gettext('endDateLockedTooltip'));
+    } else {
+      dom.endDate.title = '';
+      dom.endDate.removeAttribute('aria-label');
+    }
+  }
   dom.notes.value = (actualOverride ? event : sourceEvent)?.notes || '';
   dom.done.checked = (actualOverride ? event : sourceEvent)?.done || false;
   dom.title.readOnly = isReadOnly;

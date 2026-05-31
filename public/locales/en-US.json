@@ -15,6 +15,7 @@
   "dateLabel": "Date",
   "endDateLabel": "End date",
   "endDatePlaceholder": "(optional) YYYY-MM-DD",
+  "endDateLockedTooltip": "End date cannot be edited for child occurrences; edit the root event instead.",
   "noEndDate": "No end date",
   "costLabel": "Cost",
   "repeatLabel": "Repeat",

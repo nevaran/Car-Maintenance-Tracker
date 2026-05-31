@@ -15,6 +15,7 @@
   "dateLabel": "Дата",
   "endDateLabel": "Крайна дата",
   "endDatePlaceholder": "(по избор) ГГГГ-ММ-ДД",
+  "endDateLockedTooltip": "Крайният ден не може да се редактира за дъщерни събития; редактирайте основното събитие.",
   "noEndDate": "Без крайна дата",
   "costLabel": "Цена",
   "repeatLabel": "Повтаряне",

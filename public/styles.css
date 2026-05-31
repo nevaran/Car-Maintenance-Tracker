@@ -273,6 +273,15 @@ body {
   box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, .12);
 }
 
+/* Visual treatment for disabled end-date input to indicate it's locked */
+#end-date-field input[disabled],
+#end-date-field input:disabled {
+  opacity: 0.6;
+  background: rgba(255,255,255,0.02);
+  cursor: not-allowed;
+  border-color: rgba(255,255,255,0.04);
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -736,8 +745,15 @@ button.secondary {
   color: #d7e1ff;
   padding: 0.15em 0.35em;
   border-radius: 0.8em;
-  margin-left: 0.4em;
+  margin-left: 0.25em;
   font-size: 0.9rem;
+}
+
+/* Distinct styling for end-date shown in timeline (root events) */
+.timeline-end-date {
+  color: #ffd27a; /* warm accent to stand out from root date */
+  margin-left: 0.25em;
+  font-weight: 600;
 }
 
 .timeline-item strong {
