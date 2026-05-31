@@ -7,6 +7,7 @@ use chrono::NaiveDate;
 pub struct CreateEventCommand {
     pub title: String,
     pub date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
     pub cost: f64,
     pub repeat: String,
     pub notes: String,
@@ -26,6 +27,7 @@ pub struct UpdateEventCommand {
     pub id: String,
     pub title: Option<String>,
     pub date: Option<NaiveDate>,
+    pub end_date: Option<NaiveDate>,
     pub cost: Option<f64>,
     pub repeat: Option<String>,
     pub notes: Option<String>,

@@ -34,7 +34,10 @@ const dom = {
   form: document.getElementById('event-form'),
   title: document.getElementById('title'),
   date: document.getElementById('date'),
+  endDate: document.getElementById('end-date'),
+  endDateField: document.getElementById('end-date-field'),
   nativeDateInput: document.getElementById('native-date'),
+  nativeEndDateInput: document.getElementById('native-end-date'),
   cost: document.getElementById('cost'),
   repeat: document.getElementById('repeat'),
   notes: document.getElementById('notes'),
@@ -87,8 +90,9 @@ const dom = {
 // State for pending deletion
 let pendingDeleteId = null;
 
-// Shared Flatpickr instance for date selection
+// Shared Flatpickr instances for date selection
 let datePicker;
+let endDatePicker;
 
 // Simple numeric padding helper for date formatting
 function pad(value) {
@@ -148,12 +152,40 @@ function setDateValue(isoDate) {
   }
 }
 
+function setEndDateValue(isoDate) {
+  dom.endDate.value = isoDate || '';
+  if (endDatePicker) {
+    endDatePicker.setDate(isoDate, false);
+  }
+  if (dom.nativeEndDateInput) {
+    dom.nativeEndDateInput.value = isoDate || '';
+  }
+}
+
 function openMobileDatePicker() {
   if (!dom.nativeDateInput) return;
   if (typeof dom.nativeDateInput.showPicker === 'function') {
     dom.nativeDateInput.showPicker();
   } else {
     dom.nativeDateInput.focus();
+  }
+}
+
+function openMobileEndDatePicker() {
+  if (!dom.nativeEndDateInput) return;
+  if (typeof dom.nativeEndDateInput.showPicker === 'function') {
+    dom.nativeEndDateInput.showPicker();
+  } else {
+    dom.nativeEndDateInput.focus();
+  }
+}
+
+function updateEndDateVisibility() {
+  if (!dom.endDateField) return;
+  const isYearly = dom.repeat.value === 'yearly';
+  dom.endDateField.style.display = isYearly ? 'block' : 'none';
+  if (!isYearly) {
+    setEndDateValue('');
   }
 }
 
@@ -280,6 +312,8 @@ function applyLocaleTexts() {
   document.getElementById('event-modal-title').textContent = gettext('eventModalTitle');
   document.querySelector('label[for="title"]').textContent = gettext('titleLabel');
   document.querySelector('label[for="date"]').textContent = gettext('dateLabel');
+  document.querySelector('label[for="end-date"]').textContent = gettext('endDateLabel');
+  dom.endDate.placeholder = gettext('endDatePlaceholder');
   document.querySelector('label[for="cost"]').textContent = gettext('costLabel');
   document.querySelector('label[for="repeat"]').textContent = gettext('repeatLabel');
   document.querySelector('label[for="notes"]').textContent = gettext('notesLabel');
@@ -438,7 +472,9 @@ function getEventOccurrences(event, startDate, endDate) {
   if (event.repeat === 'yearly') {
     const createdYear = event.created_year || baseDate.getFullYear();
     const firstYear = Math.max(baseDate.getFullYear(), start.getFullYear());
-    for (let year = firstYear; year <= end.getFullYear(); year += 1) {
+    const lastYear = event.end_date ? new Date(event.end_date).getFullYear() : end.getFullYear();
+    const finalYear = Math.min(lastYear, end.getFullYear());
+    for (let year = firstYear; year <= finalYear; year += 1) {
       const candidate = new Date(year, baseDate.getMonth(), baseDate.getDate());
       if (candidate < start || candidate > end) {
         continue;
@@ -610,6 +646,10 @@ function buildTimelineItems(searchFilter = '') {
     } else if (isWithinLastWeek) {
       stripClass = 'strip-upcoming';
     }
+    const rootEvent = (evt.origin_id || evt.parentId)
+      ? state.events.find((item) => item.id === (evt.origin_id || evt.parentId))
+      : null;
+    const rootDateHint = rootEvent ? ` <span class="timeline-root-date">(${escapeHtml(rootEvent.date)})</span>` : '';
     const actionButtons = canModify ? `
         <button class="edit" data-id="${evt.id}" data-origin-id="${evt.origin_id || evt.parentId || ''}" data-generated="${evt.isGenerated ? 'true' : 'false'}" data-is-override="${evt.origin_id ? 'true' : 'false'}" data-occurrence-date="${evt.occurrence}">${gettext('edit')}</button>
         <button class="delete" data-id="${evt.id}">${gettext('delete')}</button>
@@ -630,8 +670,8 @@ function buildTimelineItems(searchFilter = '') {
           ${evt.done ? `<span class="button-icon">✓</span><span class="button-text">${gettext('doneLabel')}</span>` : `<span class="button-icon">○</span><span class="button-text">${gettext('pendingLabel')}</span>`}
         </button>` : ''}
         <div class="timeline-content">
-          <time datetime="${escapeHtml(evt.occurrence)}">${escapeHtml(evt.occurrence)}</time>
-          <strong>${escapeHtml(evt.title)}</strong>
+          <time datetime="${escapeHtml(evt.occurrence)}">${escapeHtml(evt.occurrence)}${rootDateHint}</time>
+          <strong>${escapeHtml((evt.repeat === 'yearly' ? ((evt.origin_id || evt.parentId) ? '☆ ' : '★ ') : '') + evt.title)}</strong>
           <span class="timeline-meta">${evt.repeat === 'yearly' ? escapeHtml(gettext('yearlyReminder')) : escapeHtml(gettext('oneTimeReminder'))} • €${Number(evt.cost).toFixed(2)} • ${escapeHtml(evt.notes || gettext('noNotes'))}</span>
         </div>
         <div class="item-actions">
@@ -814,10 +854,12 @@ function resetForm() {
                        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                        String(now.getDate()).padStart(2, '0');
   setDateValue(isoDateString);
+  setEndDateValue('');
   
   dom.done.checked = false;
   dom.title.readOnly = false;
   dom.repeat.disabled = false;
+  updateEndDateVisibility();
 }
 
 dom.form.addEventListener('submit', async (event) => {
@@ -848,6 +890,7 @@ dom.form.addEventListener('submit', async (event) => {
 
   const payload = {
     date: dateValue,
+    end_date: dom.endDate.value ? dom.endDate.value : undefined,
     cost: costValue,
     notes: dom.notes.value.trim(),
     done: dom.done.checked,
@@ -899,8 +942,18 @@ function loadEventForEdit(id, originId, occurrenceDate, isGenerated, isOverride)
   // Ensure date is in ISO format
   const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(eventDate) ? eventDate : formatISO(new Date(eventDate));
   setDateValue(isoDate);
+  // Populate end date if present on the source event
+  const sourceEndDate = (actualOverride ? event : sourceEvent)?.end_date || (sourceEvent && sourceEvent.end_date) || '';
+  if (sourceEndDate) {
+    // Ensure ISO format for end date
+    const ed = /^\d{4}-\d{2}-\d{2}$/.test(sourceEndDate) ? sourceEndDate : formatISO(new Date(sourceEndDate));
+    setEndDateValue(ed);
+  } else {
+    setEndDateValue('');
+  }
   dom.cost.value = Number((actualOverride ? event : sourceEvent)?.cost || 0).toFixed(2);
   dom.repeat.value = repeatValue;
+  updateEndDateVisibility();
   dom.notes.value = (actualOverride ? event : sourceEvent)?.notes || '';
   dom.done.checked = (actualOverride ? event : sourceEvent)?.done || false;
   dom.title.readOnly = isReadOnly;
@@ -1042,6 +1095,32 @@ function initializeApp() {
         setDateValue(e.target.value);
       }
     });
+    if (dom.endDate) {
+      dom.endDate.readOnly = true;
+      dom.endDate.addEventListener('focus', () => {
+        if (dom.endDateField.style.display !== 'none') {
+          openMobileEndDatePicker();
+        }
+      });
+      dom.endDate.addEventListener('click', () => {
+        if (dom.endDateField.style.display !== 'none') {
+          openMobileEndDatePicker();
+        }
+      });
+      dom.endDate.addEventListener('keydown', (event) => {
+        event.preventDefault();
+        if (dom.endDateField.style.display !== 'none') {
+          openMobileEndDatePicker();
+        }
+      });
+    }
+    if (dom.nativeEndDateInput) {
+      dom.nativeEndDateInput.addEventListener('change', (e) => {
+        if (e.target.value) {
+          setEndDateValue(e.target.value);
+        }
+      });
+    }
   } else {
     datePicker = flatpickr(dom.date, {
       dateFormat: "Y-m-d",
@@ -1049,7 +1128,16 @@ function initializeApp() {
       clickOpens: true,
       defaultDate: dom.date.value
     });
+    endDatePicker = flatpickr(dom.endDate, {
+      dateFormat: "Y-m-d",
+      allowInput: true,
+      clickOpens: true,
+      defaultDate: dom.endDate.value || null
+    });
   }
+
+  dom.repeat.addEventListener('change', updateEndDateVisibility);
+  updateEndDateVisibility();
   
   initializeLocaleUI();
   initializeUserUI();

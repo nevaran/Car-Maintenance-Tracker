@@ -139,10 +139,17 @@
                 <label for="title">Title</label>
                 <input id="title" type="text" placeholder="Oil change, insurance, etc." required />
               </div>
-              <div class="form-row">
-                <label for="date">Date <span style="font-size: 0.9em; color: #a3b4d1;">(YYYY-MM-DD)</span></label>
-                <input id="date" type="text" placeholder="2026-04-21" required />
-                <input id="native-date" type="date" style="display:none;" aria-hidden="true" />
+              <div class="form-row split" id="date-row">
+                <div>
+                  <label for="date">Date <span style="font-size: 0.9em; color: #a3b4d1;">(YYYY-MM-DD)</span></label>
+                  <input id="date" type="text" placeholder="2026-04-21" required />
+                  <input id="native-date" type="date" style="display:none;" aria-hidden="true" />
+                </div>
+                <div id="end-date-field" style="display:none;">
+                  <label for="end-date">End date <span style="font-size: 0.9em; color: #a3b4d1;">(optional)</span></label>
+                  <input id="end-date" type="text" placeholder="2028-04-21" />
+                  <input id="native-end-date" type="date" style="display:none;" aria-hidden="true" />
+                </div>
               </div>
               <div class="form-row split">
                 <div>

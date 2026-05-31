@@ -16,6 +16,7 @@ pub struct ListEventsQueryResult {
 pub struct CreateEventRequest {
     pub title: Option<String>,
     pub date: Option<String>,
+    pub end_date: Option<String>,
     pub cost: Option<f64>,
     pub repeat: Option<String>,
     pub notes: Option<String>,
@@ -28,6 +29,7 @@ pub struct CreateEventRequest {
 pub struct UpdateEventRequest {
     pub title: Option<String>,
     pub date: Option<String>,
+    pub end_date: Option<String>,
     pub cost: Option<f64>,
     pub repeat: Option<String>,
     pub notes: Option<String>,

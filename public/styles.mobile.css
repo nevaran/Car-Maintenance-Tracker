@@ -398,6 +398,15 @@ textarea {
   font-weight: 500;
 }
 
+.timeline-root-date {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7e1ff;
+  padding: 0.15em 0.35em;
+  border-radius: 0.8em;
+  margin-left: 0.4em;
+  font-size: 0.9rem;
+}
+
 .timeline-item strong {
   display: block;
   margin-bottom: 0.25rem;

@@ -2,6 +2,7 @@
 use super::commands::*;
 use super::queries::*;
 use crate::domain::Event;
+use chrono::Datelike;
 use crate::error::{AppError, Result};
 use crate::infra::EventRepository;
 use std::sync::Arc;
@@ -33,6 +34,7 @@ impl EventService {
             id: self.id_gen.generate(),
             title: cmd.title,
             date: cmd.date,
+            end_date: cmd.end_date,
             cost: cmd.cost,
             repeat: cmd.repeat,
             notes: cmd.notes,
@@ -58,30 +60,70 @@ impl EventService {
     pub async fn update_event(&self, cmd: UpdateEventCommand) -> Result<UpdateEventCommandResult> {
         let mut events = self.event_repo.load_all().await?;
 
-        let existing = events
-            .iter_mut()
-            .find(|event| event.id == cmd.id)
-            .ok_or_else(|| AppError::NotFound("Event not found".to_string()))?;
+        // Locate the event by index to avoid holding simultaneous mutable borrows
+        let pos = events.iter().position(|event| event.id == cmd.id).ok_or_else(|| AppError::NotFound("Event not found".to_string()))?;
 
-        if existing.origin_id.is_none() {
-            if let Some(title) = cmd.title {
+        // Clone current snapshot for branch operations (split path will remove/insert)
+        let existing_snapshot = events[pos].clone();
+
+        if existing_snapshot.origin_id.is_none() {
+            if let Some(title) = cmd.title.clone() {
                 if !title.trim().is_empty() {
-                    existing.title = title;
+                    events[pos].title = title;
                 }
             }
         }
 
         if let Some(date) = cmd.date {
-            existing.date = date;
+            // If updating a non-root yearly occurrence's date, split recurrence
+            if existing_snapshot.origin_id.is_some() && existing_snapshot.repeat == "yearly" {
+                let new_start = date;
+                let prev_year = new_start.year() - 1;
+
+                // If parent exists, set its end_date to previous year
+                if let Some(parent_id) = existing_snapshot.origin_id.clone() {
+                    if let Some(parent_pos) = events.iter().position(|e| e.id == parent_id) {
+                        events[parent_pos].end_date = Some(chrono::NaiveDate::from_ymd_opt(prev_year, events[parent_pos].date.month(), events[parent_pos].date.day()).unwrap_or(events[parent_pos].date));
+                    }
+                }
+
+                // Create new base yearly event
+                let new_event = Event {
+                    id: self.id_gen.generate(),
+                    title: existing_snapshot.title.clone(),
+                    date: new_start,
+                    end_date: None,
+                    cost: existing_snapshot.cost,
+                    repeat: "yearly".to_string(),
+                    notes: existing_snapshot.notes.clone(),
+                    done: false,
+                    origin_id: None,
+                    created_year: Some(new_start.year() as u16),
+                };
+
+                // Remove this occurrence (override) if present and add the new series
+                events.retain(|e| e.id != existing_snapshot.id);
+                events.push(new_event.clone());
+
+                // Persist and return the new event as response
+                self.event_repo.save_all(&events).await?;
+                return Ok(UpdateEventCommandResult { event: new_event });
+            }
+
+            // Non-split update: update in place
+            events[pos].date = date;
+        }
+
+        if let Some(end_date) = cmd.end_date {
+            events[pos].end_date = Some(end_date);
         }
 
         if let Some(cost) = cmd.cost {
-            existing.cost = cost;
+            events[pos].cost = cost;
         }
-
-        if existing.origin_id.is_none() {
-            if let Some(repeat) = cmd.repeat {
-                existing.repeat = match repeat.as_str() {
+        if events[pos].origin_id.is_none() {
+            if let Some(repeat) = cmd.repeat.clone() {
+                events[pos].repeat = match repeat.as_str() {
                     "yearly" => "yearly".to_string(),
                     _ => "once".to_string(),
                 };
@@ -89,22 +131,22 @@ impl EventService {
         }
 
         if let Some(notes) = cmd.notes {
-            existing.notes = notes;
+            events[pos].notes = notes;
         }
 
         if let Some(done) = cmd.done {
-            existing.done = done;
+            events[pos].done = done;
         }
 
         if let Some(origin_id) = cmd.origin_id {
-            existing.origin_id = Some(origin_id);
+            events[pos].origin_id = Some(origin_id);
         }
 
         if let Some(created_year) = cmd.created_year {
-            existing.created_year = Some(created_year);
+            events[pos].created_year = Some(created_year);
         }
 
-        let response = existing.clone();
+        let response = events[pos].clone();
         self.event_repo.save_all(&events).await?;
 
         info!(event_id = %cmd.id, "updated event");

@@ -141,6 +141,13 @@ impl EventHandlers {
         let cmd = CreateEventCommand {
             title,
             date,
+            end_date: match payload.end_date {
+                Some(s) if !s.trim().is_empty() => match NaiveDate::parse_from_str(&s, "%Y-%m-%d") {
+                    Ok(d) => Some(d),
+                    Err(_) => return crate::error::AppError::BadRequest("Invalid end_date format".to_string()).into_response(),
+                },
+                _ => None,
+            },
             cost: payload.cost.unwrap_or(0.0),
             repeat,
             notes: payload.notes.unwrap_or_default(),
@@ -211,6 +218,9 @@ impl EventHandlers {
             id,
             title: payload.title,
             date,
+            end_date: if let Some(ed) = payload.end_date {
+                if ed.trim().is_empty() { None } else { match NaiveDate::parse_from_str(&ed, "%Y-%m-%d") { Ok(d) => Some(d), Err(_) => return crate::error::AppError::BadRequest("Invalid end_date format".to_string()).into_response(), } }
+            } else { None },
             cost: payload.cost,
             repeat: payload.repeat,
             notes: payload.notes,
