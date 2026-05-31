@@ -16,6 +16,8 @@
   "endDateLabel": "End date",
   "endDatePlaceholder": "(optional) YYYY-MM-DD",
   "endDateLockedTooltip": "End date cannot be edited for child occurrences; edit the root event instead.",
+  "titleLockedTooltip": "Title cannot be edited for child occurrences; edit the root event instead.",
+  "splitOnChangeWarning": "Changing the date on this child yearly event will create a new yearly event when you save.",
   "noEndDate": "No end date",
   "costLabel": "Cost",
   "repeatLabel": "Repeat",

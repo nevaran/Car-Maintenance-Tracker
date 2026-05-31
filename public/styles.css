@@ -273,13 +273,25 @@ body {
   box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, .12);
 }
 
-/* Visual treatment for disabled end-date input to indicate it's locked */
-#end-date-field input[disabled],
-#end-date-field input:disabled {
+/* Visual treatment for disabled form fields to indicate they are locked */
+input[disabled],
+textarea[disabled] {
   opacity: 0.6;
   background: rgba(255,255,255,0.02);
   cursor: not-allowed;
   border-color: rgba(255,255,255,0.04);
+}
+
+.event-warning {
+  display: none;
+  margin-top: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-radius: 0.9rem;
+  background: rgba(241, 196, 15, 0.12);
+  border: 1px solid rgba(241, 196, 15, 0.25);
+  color: #f1c40f;
+  font-size: 0.95rem;
+  line-height: 1.4;
 }
 
 .section-header {
@@ -754,6 +766,18 @@ button.secondary {
   color: #ffd27a; /* warm accent to stand out from root date */
   margin-left: 0.25em;
   font-weight: 600;
+}
+
+.timeline-title.modified {
+  font-weight: 700;
+}
+
+.timeline-meta-value {
+  font-weight: 400;
+}
+
+.timeline-meta-value.modified {
+  font-weight: 700;
 }
 
 .timeline-item strong {

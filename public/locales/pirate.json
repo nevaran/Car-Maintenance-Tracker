@@ -16,6 +16,8 @@
   "endDateLabel": "Final day o’ voyage",
   "endDatePlaceholder": "(optional) YYYY-MM-DD",
   "endDateLockedTooltip": "Ye can't change the end date fer child events; change th' root event instead.",
+  "titleLockedTooltip": "Ye can't change the title fer child events; change th' root event instead.",
+  "splitOnChangeWarning": "Changin’ the date o’ this child yearly event will spawn a new voyage when ye save.",
   "noEndDate": "No final day",
   "costLabel": "Cost in doubloons",
   "repeatLabel": "Repeat yer tale",

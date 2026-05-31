@@ -46,6 +46,7 @@ const dom = {
   eventOriginId: document.getElementById('event-origin-id'),
   eventOriginDate: document.getElementById('event-origin-date'),
   eventOriginalRepeat: document.getElementById('event-original-repeat'),
+  eventSaveWarning: document.getElementById('event-save-warning'),
   clearForm: document.getElementById('clear-form'),
   yearSelect: document.getElementById('year-select'),
   monthSelect: document.getElementById('month-select'),
@@ -150,6 +151,9 @@ function setDateValue(isoDate) {
   if (dom.nativeDateInput) {
     dom.nativeDateInput.value = isoDate;
   }
+  if (typeof updateSplitOnChangeWarning === 'function') {
+    updateSplitOnChangeWarning();
+  }
 }
 
 function setEndDateValue(isoDate) {
@@ -191,7 +195,6 @@ function updateEndDateVisibility() {
       dom.endDate.removeAttribute('aria-label');
     }
   }
-  // If end-date exists and is disabled, ensure tooltip is present
   if (dom.endDate) {
     if (dom.endDate.disabled) {
       dom.endDate.title = gettext('endDateLockedTooltip');
@@ -200,6 +203,24 @@ function updateEndDateVisibility() {
       dom.endDate.title = '';
       dom.endDate.removeAttribute('aria-label');
     }
+  }
+}
+
+function updateSplitOnChangeWarning() {
+  if (!dom.eventSaveWarning) return;
+  const originId = dom.eventOriginId.value;
+  const originalRepeat = dom.eventOriginalRepeat.value;
+  const originalDate = dom.eventOriginDate.value;
+  const currentDate = dom.date.value;
+  const isNonRootYearly = Boolean(originId) && (originalRepeat === 'yearly' || dom.repeat.value === 'yearly');
+  const willCreateNewEvent = isNonRootYearly && originalDate && currentDate && originalDate !== currentDate;
+
+  if (willCreateNewEvent) {
+    dom.eventSaveWarning.textContent = gettext('splitOnChangeWarning');
+    dom.eventSaveWarning.style.display = 'block';
+  } else {
+    dom.eventSaveWarning.textContent = '';
+    dom.eventSaveWarning.style.display = 'none';
   }
 }
 
@@ -665,7 +686,22 @@ function buildTimelineItems(searchFilter = '') {
       : null;
     const rootDateHint = rootEvent ? `<span class="timeline-root-date">(${escapeHtml(rootEvent.date)})</span>` : '';
     const isRootEntry = !(evt.origin_id || evt.parentId);
+    const marker = evt.repeat === 'yearly'
+      ? (evt.origin_id ? '✪ ' : (evt.parentId ? '☆ ' : '★ '))
+      : '';
     const endDateHint = (isRootEntry && evt.end_date) ? `<span class="timeline-end-date">→ ${escapeHtml(evt.end_date)}</span>` : '';
+    const titleChanged = rootEvent && evt.origin_id && evt.title !== rootEvent.title;
+    const titleHtml = titleChanged
+      ? `<strong>${escapeHtml(marker + evt.title)}</strong>`
+      : escapeHtml(marker + evt.title);
+    const costValue = `€${Number(evt.cost).toFixed(2)}`;
+    const costClass = rootEvent && evt.origin_id && Number(evt.cost) !== Number(rootEvent.cost)
+      ? 'timeline-meta-value modified'
+      : 'timeline-meta-value';
+    const notesText = evt.notes || gettext('noNotes');
+    const notesClass = rootEvent && evt.origin_id && notesText !== (rootEvent.notes || '')
+      ? 'timeline-meta-value modified'
+      : 'timeline-meta-value';
     const actionButtons = canModify ? `
         <button class="edit" data-id="${evt.id}" data-origin-id="${evt.origin_id || evt.parentId || ''}" data-generated="${evt.isGenerated ? 'true' : 'false'}" data-is-override="${evt.origin_id ? 'true' : 'false'}" data-occurrence-date="${evt.occurrence}">${gettext('edit')}</button>
         <button class="delete" data-id="${evt.id}">${gettext('delete')}</button>
@@ -687,8 +723,8 @@ function buildTimelineItems(searchFilter = '') {
         </button>` : ''}
         <div class="timeline-content">
           <time datetime="${escapeHtml(evt.occurrence)}">${escapeHtml(evt.occurrence)}${rootDateHint}${endDateHint}</time>
-          <strong>${escapeHtml((evt.repeat === 'yearly' ? ((evt.origin_id || evt.parentId) ? '☆ ' : '★ ') : '') + evt.title)}</strong>
-          <span class="timeline-meta">${evt.repeat === 'yearly' ? escapeHtml(gettext('yearlyReminder')) : escapeHtml(gettext('oneTimeReminder'))} • €${Number(evt.cost).toFixed(2)} • ${escapeHtml(evt.notes || gettext('noNotes'))}</span>
+          <span class="timeline-title${titleChanged ? ' modified' : ''}">${titleHtml}</span>
+          <span class="timeline-meta">${evt.repeat === 'yearly' ? escapeHtml(gettext('yearlyReminder')) : escapeHtml(gettext('oneTimeReminder'))} • <span class="${costClass}">${escapeHtml(costValue)}</span> • <span class="${notesClass}">${escapeHtml(notesText)}</span></span>
         </div>
         <div class="item-actions">
           ${actionButtons}
@@ -874,6 +910,9 @@ function resetForm() {
   
   dom.done.checked = false;
   dom.title.readOnly = false;
+  dom.title.disabled = false;
+  dom.title.title = '';
+  dom.title.removeAttribute('aria-label');
   dom.repeat.disabled = false;
   // Ensure end-date is editable after reset
   if (dom.endDate) {
@@ -883,6 +922,7 @@ function resetForm() {
     dom.endDate.removeAttribute('aria-label');
   }
   updateEndDateVisibility();
+  updateSplitOnChangeWarning();
 }
 
 dom.form.addEventListener('submit', async (event) => {
@@ -992,7 +1032,16 @@ function loadEventForEdit(id, originId, occurrenceDate, isGenerated, isOverride)
   dom.notes.value = (actualOverride ? event : sourceEvent)?.notes || '';
   dom.done.checked = (actualOverride ? event : sourceEvent)?.done || false;
   dom.title.readOnly = isReadOnly;
+  dom.title.disabled = isReadOnly;
+  if (isReadOnly) {
+    dom.title.title = gettext('titleLockedTooltip');
+    dom.title.setAttribute('aria-label', gettext('titleLockedTooltip'));
+  } else {
+    dom.title.title = '';
+    dom.title.removeAttribute('aria-label');
+  }
   dom.repeat.disabled = isReadOnly;
+  updateSplitOnChangeWarning();
 
   if (isGenerated) {
     dom.eventId.value = '';
@@ -1027,6 +1076,8 @@ if (window.visualViewport) {
 }
 
 dom.clearForm.addEventListener('click', resetForm);
+
+dom.date.addEventListener('input', updateSplitOnChangeWarning);
 
 // Basic validation for manual input (Flatpickr handles most validation)
 dom.date.addEventListener('blur', (e) => {
@@ -1129,6 +1180,7 @@ function initializeApp() {
       if (e.target.value) {
         setDateValue(e.target.value);
       }
+      updateSplitOnChangeWarning();
     });
     if (dom.endDate) {
       dom.endDate.readOnly = true;
@@ -1171,7 +1223,10 @@ function initializeApp() {
     });
   }
 
-  dom.repeat.addEventListener('change', updateEndDateVisibility);
+  dom.repeat.addEventListener('change', () => {
+    updateEndDateVisibility();
+    updateSplitOnChangeWarning();
+  });
   updateEndDateVisibility();
   
   initializeLocaleUI();

@@ -16,6 +16,8 @@
   "endDateLabel": "終了日",
   "endDatePlaceholder": "（オプション）YYYY-MM-DD",
   "endDateLockedTooltip": "終了日は子イベントでは編集できません。元のイベントを編集してください。",
+  "titleLockedTooltip": "タイトルは子イベントでは編集できません。元のイベントを編集してください。",
+  "splitOnChangeWarning": "この子イベントの日時を変更すると、保存時に新しい年間イベントが作成されます。",
   "noEndDate": "終了日なし",
   "costLabel": "費用",
   "repeatLabel": "繰り返し",
