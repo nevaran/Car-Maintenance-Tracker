@@ -82,5 +82,15 @@
   "deleteCancelBtn": "Cancel",
   "eventDeletedSuccessfully": "Event deleted successfully",
   "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-  "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  "manageRecipients": "Manage recipients",
+  "recipientsSaved": "Notification recipients saved",
+  "errorSavingRecipients": "Failed to save recipients"
+  ,"pleaseEnterRecipients": "Please enter at least one recipient email",
+  "testEmailSent": "Test email sent",
+  "notificationRecipientsTitle": "Notification recipients",
+  "recipientEmailsLabel": "Recipient emails (comma-separated)",
+  "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
+  "saveRecipients": "Save recipients",
+  "sendTestEmail": "Send test email"
 }

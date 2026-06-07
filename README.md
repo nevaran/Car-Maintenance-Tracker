@@ -127,8 +127,16 @@ The application implements comprehensive security measures:
 - Localization bundles are loaded from `public/locales/`.
 - The app is designed to work without a frontend build step; static assets are served directly.
 
+
+## Email notifications & Manage Recipients
+
+- Admins can manage notification recipients from the user menu. The modal lets admins enter comma-separated email addresses, save them, and send a test email.
+- SMTP configuration is controlled via environment variables (see `.env.example` and `docker-compose.yml`). The app will not send emails if the sender is not configured (for example the placeholder `sender@example.com`) or if the sender field is empty.
+- Example: For Gmail use STARTTLS on port `587` and a 16-character app password (no spaces or quotes). Ensure the corresponding `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, and `SMTP_PASSWORD` are set in your environment.
+
+Testing: after configuring SMTP and logging in as an admin, open the Manage Recipients window, add recipients, and use "Send test email" to verify delivery. Check server logs for any SMTP errors.
+
+
 ## Roadmap
 
-### Add email notification system
 ### Improve security, specifically in the users data
-### Code refactoring

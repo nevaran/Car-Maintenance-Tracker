@@ -33,12 +33,23 @@ impl AuthService {
             .format("%a, %d %b %Y %H:%M:%S GMT")
             .to_string();
 
-        format!(
-            "session_id={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}; Expires={}",
-            session_id,
-            Self::SESSION_COOKIE_MAX_AGE,
-            expires
-        )
+        // Allow configuring the Secure flag via env var `COOKIE_SECURE=true` for TLS deployments
+        let secure_flag = std::env::var("COOKIE_SECURE").unwrap_or_default().to_lowercase() == "true";
+        if secure_flag {
+            format!(
+                "session_id={}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age={}; Expires={}",
+                session_id,
+                Self::SESSION_COOKIE_MAX_AGE,
+                expires
+            )
+        } else {
+            format!(
+                "session_id={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}; Expires={}",
+                session_id,
+                Self::SESSION_COOKIE_MAX_AGE,
+                expires
+            )
+        }
     }
 
     // Create a new AuthService with repository dependencies and session tracking.
@@ -411,6 +422,23 @@ impl AuthService {
         if let Some(u) = users.iter_mut().find(|u| u.id == cmd.user_id) {
             *u = user.clone();
             self.user_repo.save_all(&users).await?;
+        }
+
+        // Ensure any active sessions for this user are updated in-memory so
+        // subsequent /api/current_user calls return the latest settings.
+        {
+            let mut sessions = self.sessions.lock().await;
+            let mut changed = false;
+            for (_k, session) in sessions.iter_mut() {
+                if session.user.id == cmd.user_id {
+                    session.user = user.clone();
+                    changed = true;
+                }
+            }
+            if changed {
+                // Persist session snapshot so disk-backed sessions reflect update
+                self.persist_sessions(&sessions).await?;
+            }
         }
 
         Ok(UpdateSettingsCommandResult { user })

@@ -59,6 +59,8 @@ pub struct Event {
     pub date: NaiveDate,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_date: Option<NaiveDate>,
+    #[serde(default)]
+    pub email_sent: bool,
     pub cost: f64,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub repeat: String,

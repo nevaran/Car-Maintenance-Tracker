@@ -81,5 +81,15 @@
   "deleteConfirmBtn": "ลบเหตุการณ์",
   "deleteCancelBtn": "ยกเลิก",
   "eventDeletedSuccessfully": "ลบเหตุการณ์สำเร็จ",  "months": ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"],
-  "weekdays": ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"]
+  "weekdays": ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"],
+  "manageRecipients": "จัดการผู้รับ",
+  "recipientsSaved": "บันทึกผู้รับการแจ้งเตือนแล้ว",
+  "errorSavingRecipients": "บันทึกผู้รับไม่สำเร็จ"
+  ,"pleaseEnterRecipients": "โปรดป้อนที่อยู่อีเมลผู้รับอย่างน้อยหนึ่งรายการ",
+  "testEmailSent": "ส่งอีเมลทดสอบแล้ว",
+  "notificationRecipientsTitle": "ผู้รับการแจ้งเตือน",
+  "recipientEmailsLabel": "อีเมลผู้รับ (คั่นด้วยจุลภาค)",
+  "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
+  "saveRecipients": "บันทึกผู้รับ",
+  "sendTestEmail": "ส่งอีเมลทดสอบ"
 }

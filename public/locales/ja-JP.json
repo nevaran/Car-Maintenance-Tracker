@@ -82,5 +82,15 @@
   "deleteCancelBtn": "キャンセル",
   "eventDeletedSuccessfully": "イベントが正常に削除されました",
   "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
-  "weekdays": ["月", "火", "水", "木", "金", "土", "日"]
+  "weekdays": ["月", "火", "水", "木", "金", "土", "日"],
+  "manageRecipients": "受信者を管理",
+  "recipientsSaved": "通知受信者を保存しました",
+  "errorSavingRecipients": "受信者の保存に失敗しました"
+    "pleaseEnterRecipients": "少なくとも1つの受信者のメールアドレスを入力してください",
+    "testEmailSent": "テストメールを送信しました",
+    "notificationRecipientsTitle": "通知の受信者",
+    "recipientEmailsLabel": "受信者のメールアドレス（カンマ区切り）",
+    "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
+    "saveRecipients": "受信者を保存",
+    "sendTestEmail": "テストメールを送信"
 }

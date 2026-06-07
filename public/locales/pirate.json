@@ -103,5 +103,15 @@
     "Fri",
     "Sat",
     "Sun"
-  ]
+  ],
+  "manageRecipients": "Manage recipients, aye",
+  "recipientsSaved": "Recipients stowed for notifications",
+  "errorSavingRecipients": "Failed to stow recipients"
+   ,"pleaseEnterRecipients": "Please enter at least one recipient email",
+   "testEmailSent": "Test missive launched from the crow's nest",
+   "notificationRecipientsTitle": "Recipients fer yer notices",
+   "recipientEmailsLabel": "Recipient emails (comma-separated)",
+   "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
+   "saveRecipients": "Save recipients",
+   "sendTestEmail": "Send test email"
 }

@@ -186,7 +186,7 @@ impl AuthHandlers {
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
             Ok((user, session_id)) => {
-                let user_id = user.id;
+                let user_id = user.id.clone();
                 let cmd = ChangePasswordCommand {
                     user_id: user_id.clone(),
                     old_password: payload.old_password,
@@ -212,7 +212,12 @@ impl AuthHandlers {
     ) -> Response {
         match self.get_current_user_internal(&headers).await {
             Ok((user, session_id)) => {
-                let user_id = user.id;
+                let user_id = user.id.clone();
+                // Only admin users may set notification recipients
+                if payload.settings.contains_key("notification_recipients") && !user.is_admin() {
+                    return crate::error::AppError::Forbidden("Admin required to set notification recipients".to_string()).into_response();
+                }
+
                 let cmd = UpdateSettingsCommand {
                     user_id: user_id.clone(),
                     settings: payload.settings,

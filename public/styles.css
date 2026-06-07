@@ -509,6 +509,14 @@ textarea[disabled] {
   line-height: 1.1;
 }
 
+.calendar-cell .day-number.today {
+  color: #ffaa32; /* accent color for today */
+  background: rgba(43,110,246,0.08);
+  padding: 0.2vmin 0.6vmin;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
 .event-dot {
   margin-top: 0.5vmin;
   display: flex;

@@ -9,13 +9,15 @@ description = "Rust backend for the Car Maintenance Tracker web app"
 axum = { version = "0.8", features = ["http1", "json", "macros", "tokio"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "fs", "net"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "net"] }
 tower-http = { version = "0.6", features = ["fs", "trace", "set-header"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 bcrypt = "0.15"
-hyper = { version = "0.14", features = ["server"] }
+hyper = { version = "1", features = ["server"] }
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 governor = "0.10"
-uuid = { version = "1.4", features = ["v4"] }
+uuid = { version = "1", features = ["v4"] }
+lettre = { version = "0.11.22", default-features = false, features = ["tokio1", "builder", "smtp-transport", "tokio1-rustls-tls"] }
+html-escape = "0.2"

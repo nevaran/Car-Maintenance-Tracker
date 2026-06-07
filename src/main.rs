@@ -6,9 +6,11 @@ mod infra;
 
 use axum::{
     extract::Path,
+    extract::Json,
     http::{HeaderMap, HeaderName},
     routing::{get, post, put},
     Router,
+    response::IntoResponse,
 };
 use tower_http::set_header::SetResponseHeaderLayer;
 use axum::http::HeaderValue;
@@ -19,7 +21,8 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use domain::IpExtractor;
-use features::{AuthHandlers, AuthService, EventHandlers, EventService, HealthHandlers};
+use features::{AuthHandlers, AuthService, EventHandlers, EventService, HealthHandlers, EmailService};
+use features::auth::queries::GetCurrentUserQuery;
 use infra::{
     FileEventRepository, FileUserRepository, FileAuditRepository, FileSessionRepository, ProxyAwareIpExtractor, TimestampIdGenerator, BackupManager,
 };
@@ -54,7 +57,9 @@ async fn main() {
     if let Err(err) = auth_service.load_sessions().await {
         error!(error = ?err, "Failed to load persisted sessions");
     }
-    let event_service = Arc::new(EventService::new(event_repo, id_gen));
+    let event_service = Arc::new(EventService::new(event_repo.clone(), id_gen));
+    // Email service for sending upcoming event notifications
+    let email_service = Arc::new(EmailService::new(event_repo.clone(), user_repo.clone()));
 
     // Background pruning task to cleanup expired sessions periodically
     {
@@ -71,9 +76,9 @@ async fn main() {
     {
         let backup_manager = BackupManager::new("data/events.json");
         tokio::spawn(async move {
+            tracing::info!("backup background task started");
             // Run backup immediately on startup (in case it's the first run of the day)
             let _ = backup_manager.backup_daily().await;
-            
             loop {
                 // Check every hour if we need to create a daily backup
                 tokio::time::sleep(Duration::from_secs(3600)).await;
@@ -84,6 +89,24 @@ async fn main() {
                     Err(e) => {
                         tracing::error!(error = ?e, "failed to perform daily backup");
                     }
+                }
+            }
+        });
+    }
+
+    // Background email notification task: send notifications at startup and every 6 hours
+    {
+        let email_clone = email_service.clone();
+        tokio::spawn(async move {
+            tracing::info!("email background task started");
+            if let Err(e) = email_clone.send_upcoming_notifications().await {
+                tracing::error!(error = ?e, "failed to send initial email notifications");
+            }
+
+            loop {
+                tokio::time::sleep(Duration::from_secs(60 * 60 * 6)).await; // 6 hours
+                if let Err(e) = email_clone.send_upcoming_notifications().await {
+                    tracing::error!(error = ?e, "failed to send scheduled email notifications");
                 }
             }
         });
@@ -163,6 +186,42 @@ async fn main() {
             put(move |headers, body| {
                 let a = auth_clone7.clone();
                 async move { a.update_settings(headers, body).await }
+            }),
+        )
+        .route(
+            "/api/email/test",
+            post(move |headers: HeaderMap, Json(payload): Json<serde_json::Value>| {
+                let email_clone = email_service.clone();
+                let auth_svc = auth_service.clone();
+                async move {
+                    let cookie = headers.get("cookie").and_then(|c| c.to_str().ok()).unwrap_or("").to_string();
+                    if cookie.is_empty() {
+                        return crate::error::AppError::Unauthorized("Not logged in".to_string()).into_response();
+                    }
+                    let query = GetCurrentUserQuery { cookie };
+                    match auth_svc.get_current_user(query).await {
+                        Ok(res) => {
+                            if !res.user.is_admin() {
+                                return crate::error::AppError::Forbidden("Admin required".to_string()).into_response();
+                            }
+                        }
+                        Err(e) => return e.into_response(),
+                    }
+
+                    let mut recipients: Vec<String> = Vec::new();
+                    if let Some(r) = payload.get("recipients") {
+                        if r.is_string() {
+                            recipients = r.as_str().unwrap_or("").split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+                        } else if r.is_array() {
+                            recipients = r.as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_str().map(|s| s.trim().to_string())).filter(|s| !s.is_empty()).collect();
+                        }
+                    }
+
+                    match email_clone.send_test_email(recipients).await {
+                        Ok(_) => (axum::http::StatusCode::OK, axum::Json(serde_json::json!({"sent": true}))).into_response(),
+                        Err(e) => e.into_response(),
+                    }
+                }
             }),
         )
         .route(

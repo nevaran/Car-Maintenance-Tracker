@@ -2,7 +2,7 @@
 use crate::domain::Event;
 use crate::error::Result;
 use std::path::Path;
-use tokio::fs;
+use tokio::{fs, sync::Mutex};
 use tracing::{debug, error};
 
 /// Event repository trait
@@ -15,12 +15,14 @@ pub trait EventRepository: Send + Sync {
 /// File-based event repository implementation
 pub struct FileEventRepository {
     path: String,
+    file_lock: Mutex<()>,
 }
 
 impl FileEventRepository {
     pub fn new(path: impl Into<String>) -> Self {
         Self {
             path: path.into(),
+            file_lock: Mutex::new(()),
         }
     }
 }
@@ -29,7 +31,8 @@ impl FileEventRepository {
 impl EventRepository for FileEventRepository {
     async fn load_all(&self) -> Result<Vec<Event>> {
         let path = Path::new(&self.path);
-        
+        let _guard = self.file_lock.lock().await;
+
         if !path.exists() {
             debug!(path = %self.path, "data file does not exist, returning empty events");
             return Ok(Vec::new());
@@ -54,7 +57,8 @@ impl EventRepository for FileEventRepository {
 
     async fn save_all(&self, events: &[Event]) -> Result<()> {
         let path = Path::new(&self.path);
-        
+        let _guard = self.file_lock.lock().await;
+
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)
                 .await
@@ -64,11 +68,20 @@ impl EventRepository for FileEventRepository {
         let data = serde_json::to_string_pretty(events)
             .map_err(|_| crate::error::AppError::InternalError("Failed to serialize events".to_string()))?;
 
-        fs::write(path, data)
+        // Write to a temporary file and rename for atomic replacement
+        let tmp_path = path.with_extension("json.tmp");
+        fs::write(&tmp_path, &data)
             .await
             .map_err(|err| {
-                error!(path = %self.path, error = ?err, "failed to write events file");
+                error!(path = %self.path, error = ?err, "failed to write temp events file");
                 crate::error::AppError::InternalError("Failed to write events file".to_string())
+            })?;
+
+        fs::rename(&tmp_path, path)
+            .await
+            .map_err(|err| {
+                error!(path = %self.path, error = ?err, "failed to atomically rename events file");
+                crate::error::AppError::InternalError("Failed to save events file".to_string())
             })
     }
 }

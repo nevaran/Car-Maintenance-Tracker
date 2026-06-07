@@ -81,5 +81,15 @@
   "deleteConfirmBtn": "Изтрий събитие",
   "deleteCancelBtn": "Отказ",
   "eventDeletedSuccessfully": "Събитието е изтрито успешно",  "months": ["Януари", "Февруари", "Март", "Април", "Май", "Юни", "Юли", "Август", "Септември", "Октомври", "Ноември", "Декември"],
-  "weekdays": ["Пон", "Вт", "Ср", "Чет", "Пет", "Съб", "Нед"]
+  "weekdays": ["Пон", "Вт", "Ср", "Чет", "Пет", "Съб", "Нед"],
+  "manageRecipients": "Управление на получатели",
+  "recipientsSaved": "Получателите за известия са запазени",
+  "errorSavingRecipients": "Грешка при запазване на получателите"
+  ,"pleaseEnterRecipients": "Моля въведете поне един имейл на получател",
+  "testEmailSent": "Тестовият имейл е изпратен",
+  "notificationRecipientsTitle": "Получатели за известия",
+  "recipientEmailsLabel": "Имейл адреси на получатели (разделени със запетая)",
+  "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
+  "saveRecipients": "Запази получателите",
+  "sendTestEmail": "Изпрати тестов имейл"
 }

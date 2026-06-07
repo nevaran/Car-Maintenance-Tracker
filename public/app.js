@@ -11,6 +11,9 @@ const state = {
   currentDate: new Date(),
   currentUser: null,
   searchTerm: '',
+  listenersInit: {
+    manageRecipients: false,
+  },
 };
 
 // Cached DOM references for page interactions and UI updates
@@ -60,6 +63,12 @@ const dom = {
   localeSwitcher: document.getElementById('locale-switcher'),
   userButton: document.getElementById('user-button'),
   userMenu: document.getElementById('user-menu'),
+  manageRecipientsModal: document.getElementById('manage-recipients-modal'),
+  manageRecipientsOverlay: document.getElementById('manage-recipients-modal-overlay'),
+  manageRecipientsForm: document.getElementById('manage-recipients-form'),
+  notificationRecipientsInput: document.getElementById('notification-recipients'),
+  closeManageRecipients: document.getElementById('close-manage-recipients'),
+  cancelManageRecipients: document.getElementById('cancel-manage-recipients'),
   loginModal: document.getElementById('login-modal'),
   loginOverlay: document.getElementById('login-modal-overlay'),
   loginForm: document.getElementById('login-form'),
@@ -372,6 +381,21 @@ function applyLocaleTexts() {
   if (state.currentUser) {
     initializeUserUI();
   }
+  // Localize manage recipients modal header if present
+  const mrSection = document.querySelector('#manage-recipients-modal .section-title');
+  if (mrSection) mrSection.textContent = gettext('manageRecipients');
+  const mrTitle = document.getElementById('manage-recipients-modal-title');
+  if (mrTitle) mrTitle.textContent = gettext('notificationRecipientsTitle');
+  // Localize manage recipients form labels, placeholders and buttons
+  const mrLabel = document.querySelector('label[for="notification-recipients"]');
+  if (mrLabel) mrLabel.textContent = gettext('recipientEmailsLabel');
+  if (dom.notificationRecipientsInput) dom.notificationRecipientsInput.placeholder = gettext('recipientEmailsPlaceholder');
+  const mrSaveBtn = document.querySelector('#manage-recipients-form button[type="submit"]');
+  if (mrSaveBtn) mrSaveBtn.textContent = gettext('saveRecipients');
+  const mrSendBtn = document.getElementById('send-test-email');
+  if (mrSendBtn) mrSendBtn.textContent = gettext('sendTestEmail');
+  const mrCancelBtn = document.getElementById('cancel-manage-recipients');
+  if (mrCancelBtn) mrCancelBtn.textContent = gettext('cancel');
 }
 
 function buildLocaleMonthLabel(year, month) {
@@ -587,8 +611,9 @@ function renderCalendar() {
       cellClasses += ' has-upcoming-event';
     }
     cell.className = cellClasses;
+    const dayNumberClass = isToday ? 'day-number today' : 'day-number';
     cell.innerHTML = `
-      <div class="day-number">${date.getDate()}</div>
+      <div class="${dayNumberClass}">${date.getDate()}</div>
       <div class="event-dot"></div>
     `;
     const dot = cell.querySelector('.event-dot');
@@ -1123,6 +1148,65 @@ dom.nextMonth.addEventListener('click', () => {
   renderApp();
 });
 
+let touchStartX = null;
+let touchStartY = null;
+const MIN_SWIPE_DISTANCE = 50;
+
+function updateSwipeHint(deltaX, deltaY) {
+  if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > MIN_SWIPE_DISTANCE) {
+    dom.calendarGrid.classList.add('swipe-active');
+    dom.calendarGrid.dataset.swipeDirection = deltaX < 0 ? 'right' : 'left';
+  } else {
+    dom.calendarGrid.classList.remove('swipe-active');
+    dom.calendarGrid.dataset.swipeDirection = '';
+  }
+}
+
+dom.calendarGrid.addEventListener('touchstart', (event) => {
+  if (event.touches.length === 1) {
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+  }
+});
+
+dom.calendarGrid.addEventListener('touchmove', (event) => {
+  if (event.touches.length !== 1 || touchStartX === null || touchStartY === null) {
+    return;
+  }
+
+  const touch = event.touches[0];
+  const deltaX = touch.clientX - touchStartX;
+  const deltaY = touch.clientY - touchStartY;
+
+  updateSwipeHint(deltaX, deltaY);
+});
+
+dom.calendarGrid.addEventListener('touchend', (event) => {
+  if (touchStartX === null || touchStartY === null) {
+    return;
+  }
+
+  const touch = event.changedTouches[0];
+  const deltaX = touch.clientX - touchStartX;
+  const deltaY = touch.clientY - touchStartY;
+
+  dom.calendarGrid.classList.remove('swipe-active');
+  dom.calendarGrid.dataset.swipeDirection = '';
+
+  // Only treat mostly horizontal swipes as month navigation gestures.
+  if (Math.abs(deltaX) > MIN_SWIPE_DISTANCE && Math.abs(deltaX) > Math.abs(deltaY)) {
+    if (deltaX < 0) {
+      state.currentDate.setMonth(state.currentDate.getMonth() + 1);
+    } else {
+      state.currentDate.setMonth(state.currentDate.getMonth() - 1);
+    }
+    renderApp();
+  }
+
+  touchStartX = null;
+  touchStartY = null;
+});
+
 dom.monthSelect.addEventListener('change', () => {
   const selectedMonth = parseInt(dom.monthSelect.value, 10);
   state.currentDate.setMonth(selectedMonth);
@@ -1311,15 +1395,103 @@ function initializeUserUI() {
     <div class="current-user">${escapeHtml(state.currentUser.username)}</div>
     <button id="logout-button">${gettext('logout')}</button>
     <button id="change-password-button">${gettext('changePassword')}</button>
+    ${state.currentUser.role === 'admin' ? `<button id="manage-recipients-button">${gettext('manageRecipients')}</button>` : ''}
     ${state.currentUser.role === 'admin' ? `<button id="create-user-button">${gettext('createUser')}</button>` : ''}
     ${state.currentUser.role === 'admin' ? `<div class="active-users" id="active-users"><h4>${gettext('activeUsers')}</h4><div class="loading">${gettext('loading')}</div></div>` : ''}
   `;
   document.getElementById('logout-button').addEventListener('click', logout);
   document.getElementById('change-password-button').addEventListener('click', () => showChangePasswordModal());
   if (state.currentUser.role === 'admin') {
+    document.getElementById('manage-recipients-button').addEventListener('click', () => showManageRecipientsModal());
     document.getElementById('create-user-button').addEventListener('click', () => showCreateUserModal());
     fetchActiveUsers();
   }
+
+  // Manage recipients modal handlers
+  if (dom.manageRecipientsForm) {
+    if (!state.listenersInit.manageRecipients) {
+      dom.manageRecipientsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = dom.notificationRecipientsInput.value.trim();
+      try {
+        const resp = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ settings: { notification_recipients: value } }),
+        });
+        if (!resp.ok) throw new Error('Failed to save');
+        const data = await resp.json();
+        state.currentUser = data; // server returns updated user
+        showToast(gettext('recipientsSaved'), 'success');
+        hideManageRecipientsModal();
+      } catch (err) {
+        console.error('Failed to save recipients', err);
+        showToast(gettext('errorSavingRecipients'), 'error');
+      }
+      });
+
+      const sendTestBtn = document.getElementById('send-test-email');
+      if (sendTestBtn) {
+        // use onclick to ensure we don't register multiple handlers accidentally
+        sendTestBtn.onclick = async () => {
+          const value = dom.notificationRecipientsInput.value.trim();
+          if (!value) {
+            showToast(gettext('pleaseEnterRecipients') || 'Please enter at least one recipient email', 'error');
+            return;
+          }
+
+          try {
+            const resp = await fetch('/api/email/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ recipients: value }),
+            });
+            if (!resp.ok) throw new Error('Failed to send test email');
+            showToast(gettext('testEmailSent') || 'Test email sent', 'success');
+          } catch (err) {
+            console.error('Failed to send test email', err);
+            showToast(gettext('errorSavingRecipients') || 'Failed to send test email', 'error');
+          }
+        };
+      }
+
+      state.listenersInit.manageRecipients = true;
+    }
+
+    if (dom.closeManageRecipients) dom.closeManageRecipients.addEventListener('click', hideManageRecipientsModal);
+    if (dom.cancelManageRecipients) dom.cancelManageRecipients.addEventListener('click', hideManageRecipientsModal);
+  }
+}
+
+function showManageRecipientsModal() {
+  if (!dom.manageRecipientsModal) return;
+  // Ensure localized texts are applied when showing the modal
+  const mrSection = document.querySelector('#manage-recipients-modal .section-title');
+  if (mrSection) mrSection.textContent = gettext('manageRecipients');
+  const mrTitle = document.getElementById('manage-recipients-modal-title');
+  if (mrTitle) mrTitle.textContent = gettext('notificationRecipientsTitle');
+  const mrLabel = document.querySelector('label[for="notification-recipients"]');
+  if (mrLabel) mrLabel.textContent = gettext('recipientEmailsLabel');
+  if (dom.notificationRecipientsInput) dom.notificationRecipientsInput.placeholder = gettext('recipientEmailsPlaceholder');
+  const mrSaveBtn = document.querySelector('#manage-recipients-form button[type="submit"]');
+  if (mrSaveBtn) mrSaveBtn.textContent = gettext('saveRecipients');
+  const mrSendBtn = document.getElementById('send-test-email');
+  if (mrSendBtn) mrSendBtn.textContent = gettext('sendTestEmail');
+  const mrCancelBtn = document.getElementById('cancel-manage-recipients');
+  if (mrCancelBtn) mrCancelBtn.textContent = gettext('cancel');
+  const current = state.currentUser?.settings?.notification_recipients || '';
+  dom.notificationRecipientsInput.value = current;
+  dom.manageRecipientsModal.classList.add('open');
+  dom.manageRecipientsModal.setAttribute('aria-hidden', 'false');
+  dom.notificationRecipientsInput.focus();
+}
+
+function hideManageRecipientsModal() {
+  if (!dom.manageRecipientsModal) return;
+  dom.manageRecipientsModal.classList.remove('open');
+  dom.manageRecipientsModal.setAttribute('aria-hidden', 'true');
 }
 
 function toggleUserMenu() {
@@ -1519,18 +1691,30 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Refresh events periodically so all browsers stay in sync
-  setInterval(() => {
+  let pollIntervalId = setInterval(() => {
     if (!dom.modal.classList.contains('open')) {
       fetchEvents();
     }
   }, POLL_INTERVAL_MS);
 
   // Check for yearly event resets every minute
-  setInterval(checkAndResetYearlyEvents, 60000);
+  let checkIntervalId = setInterval(checkAndResetYearlyEvents, 60000);
 
-  // Refresh events again when the page returns to visibility
+  // Manage intervals based on page visibility to prevent timer leaks in long-lived sessions
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
+    if (document.hidden) {
+      // Clear intervals when page is hidden to free memory
+      clearInterval(pollIntervalId);
+      clearInterval(checkIntervalId);
+    } else {
+      // Restart intervals when page becomes visible
+      pollIntervalId = setInterval(() => {
+        if (!dom.modal.classList.contains('open')) {
+          fetchEvents();
+        }
+      }, POLL_INTERVAL_MS);
+      checkIntervalId = setInterval(checkAndResetYearlyEvents, 60000);
+      // Fetch immediately upon visibility restore
       fetchEvents();
       checkAndResetYearlyEvents();
     }
