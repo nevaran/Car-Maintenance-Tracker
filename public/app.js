@@ -1645,7 +1645,16 @@ dom.changePasswordForm.addEventListener('submit', async (event) => {
       showToast(gettext('passwordUpdated'), 'success');
       hideChangePasswordModal();
     } else {
-      showToast(gettext('passwordUpdateFailed'), 'error');
+      let message = gettext('passwordUpdateFailed');
+      try {
+        const data = await response.json();
+        if (data && data.error) {
+          message = data.error;
+        }
+      } catch (err) {
+        // ignore invalid JSON response
+      }
+      showToast(message, 'error');
     }
   } catch (error) {
     console.error('Change password error:', error);

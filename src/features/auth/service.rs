@@ -454,8 +454,8 @@ impl AuthService {
             if let Some(id) = part.strip_prefix("session_id=") {
                 if !id.is_empty() && id.len() < 256 {
                     session_id = Some(id.to_string());
+                    break; // Stop once session_id is found
                 }
-                break; // Only use the first session_id cookie
             }
         }
         
