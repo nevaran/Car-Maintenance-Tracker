@@ -67,6 +67,9 @@ const dom = {
   manageRecipientsOverlay: document.getElementById('manage-recipients-modal-overlay'),
   manageRecipientsForm: document.getElementById('manage-recipients-form'),
   notificationRecipientsInput: document.getElementById('notification-recipients'),
+  notificationThresholdOnetimeInput: document.getElementById('notification-threshold-onetime'),
+  notificationThresholdYearlyInput: document.getElementById('notification-threshold-yearly'),
+  notificationTimeSubtitle: document.getElementById('notification-time-subtitle'),
   closeManageRecipients: document.getElementById('close-manage-recipients'),
   cancelManageRecipients: document.getElementById('cancel-manage-recipients'),
   loginModal: document.getElementById('login-modal'),
@@ -389,7 +392,14 @@ function applyLocaleTexts() {
   // Localize manage recipients form labels, placeholders and buttons
   const mrLabel = document.querySelector('label[for="notification-recipients"]');
   if (mrLabel) mrLabel.textContent = gettext('recipientEmailsLabel');
+  const mrOnetimeLabel = document.querySelector('label[for="notification-threshold-onetime"]');
+  const mrYearlyLabel = document.querySelector('label[for="notification-threshold-yearly"]');
+  if (dom.notificationTimeSubtitle) dom.notificationTimeSubtitle.textContent = gettext('notificationTimeSubtitle');
+  if (mrOnetimeLabel) mrOnetimeLabel.textContent = gettext('notificationThresholdOnetimeLabel');
+  if (mrYearlyLabel) mrYearlyLabel.textContent = gettext('notificationThresholdYearlyLabel');
   if (dom.notificationRecipientsInput) dom.notificationRecipientsInput.placeholder = gettext('recipientEmailsPlaceholder');
+  if (dom.notificationThresholdOnetimeInput) dom.notificationThresholdOnetimeInput.placeholder = gettext('notificationThresholdPlaceholder');
+  if (dom.notificationThresholdYearlyInput) dom.notificationThresholdYearlyInput.placeholder = gettext('notificationThresholdPlaceholder');
   const mrSaveBtn = document.querySelector('#manage-recipients-form button[type="submit"]');
   if (mrSaveBtn) mrSaveBtn.textContent = gettext('saveRecipients');
   const mrSendBtn = document.getElementById('send-test-email');
@@ -1413,12 +1423,31 @@ function initializeUserUI() {
       dom.manageRecipientsForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const value = dom.notificationRecipientsInput.value.trim();
+      const onetimeValue = dom.notificationThresholdOnetimeInput?.value.trim() || '';
+      const yearlyValue = dom.notificationThresholdYearlyInput?.value.trim() || '';
+      const onetimeDays = Number.parseInt(onetimeValue, 10);
+      const yearlyDays = Number.parseInt(yearlyValue, 10);
+
+      if (!value) {
+        showToast(gettext('pleaseEnterRecipients') || 'Please enter at least one recipient email', 'error');
+        return;
+      }
+
+      if (Number.isNaN(onetimeDays) || onetimeDays < 1 || Number.isNaN(yearlyDays) || yearlyDays < 1) {
+        showToast(gettext('invalidNotificationWindow') || 'Please enter valid notification window values', 'error');
+        return;
+      }
+
       try {
         const resp = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ settings: { notification_recipients: value } }),
+          body: JSON.stringify({ settings: {
+            notification_recipients: value,
+            notification_threshold_onetime: String(onetimeDays),
+            notification_threshold_yearly: String(yearlyDays),
+          } }),
         });
         if (!resp.ok) throw new Error('Failed to save');
         const data = await resp.json();
@@ -1481,8 +1510,19 @@ function showManageRecipientsModal() {
   if (mrSendBtn) mrSendBtn.textContent = gettext('sendTestEmail');
   const mrCancelBtn = document.getElementById('cancel-manage-recipients');
   if (mrCancelBtn) mrCancelBtn.textContent = gettext('cancel');
+  const mrOnetimeLabel = document.querySelector('label[for="notification-threshold-onetime"]');
+  const mrYearlyLabel = document.querySelector('label[for="notification-threshold-yearly"]');
+  if (dom.notificationTimeSubtitle) dom.notificationTimeSubtitle.textContent = gettext('notificationTimeSubtitle');
+  if (mrOnetimeLabel) mrOnetimeLabel.textContent = gettext('notificationThresholdOnetimeLabel');
+  if (mrYearlyLabel) mrYearlyLabel.textContent = gettext('notificationThresholdYearlyLabel');
+  if (dom.notificationThresholdOnetimeInput) dom.notificationThresholdOnetimeInput.placeholder = gettext('notificationThresholdPlaceholder');
+  if (dom.notificationThresholdYearlyInput) dom.notificationThresholdYearlyInput.placeholder = gettext('notificationThresholdPlaceholder');
   const current = state.currentUser?.settings?.notification_recipients || '';
+  const currentOnetime = state.currentUser?.settings?.notification_threshold_onetime || '7';
+  const currentYearly = state.currentUser?.settings?.notification_threshold_yearly || '7';
   dom.notificationRecipientsInput.value = current;
+  if (dom.notificationThresholdOnetimeInput) dom.notificationThresholdOnetimeInput.value = currentOnetime;
+  if (dom.notificationThresholdYearlyInput) dom.notificationThresholdYearlyInput.value = currentYearly;
   dom.manageRecipientsModal.classList.add('open');
   dom.manageRecipientsModal.setAttribute('aria-hidden', 'false');
   dom.notificationRecipientsInput.focus();
@@ -1696,6 +1736,48 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && dom.modal.classList.contains('open')) {
       hideEventModal();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (!window.matchMedia('(min-width: 840px)').matches) {
+      return;
+    }
+
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) {
+      return;
+    }
+
+    const anyModalOpen = dom.modal.classList.contains('open') ||
+      dom.loginModal.classList.contains('open') ||
+      dom.setupModal.classList.contains('open') ||
+      dom.changePasswordModal.classList.contains('open') ||
+      dom.createUserModal.classList.contains('open') ||
+      dom.manageRecipientsModal.classList.contains('open') ||
+      dom.deleteConfirmModal.classList.contains('open');
+    const menuOpen = dom.userMenu.classList.contains('open') || dom.localeMenu.classList.contains('open');
+
+    if (anyModalOpen || menuOpen) {
+      return;
+    }
+
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      const search = dom.timelineSearch;
+      if (!search) return;
+
+      event.preventDefault();
+      search.focus();
+
+      const value = search.value || '';
+      const start = search.selectionStart ?? value.length;
+      const end = search.selectionEnd ?? value.length;
+      search.value = value.slice(0, start) + event.key + value.slice(end);
+      const cursor = start + 1;
+      search.setSelectionRange(cursor, cursor);
+      state.searchTerm = search.value;
+      buildTimelineItems(state.searchTerm);
+      renderStats(state.searchTerm);
     }
   });
 

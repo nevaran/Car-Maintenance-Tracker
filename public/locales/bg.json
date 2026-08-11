@@ -90,6 +90,11 @@
   "notificationRecipientsTitle": "Получатели за известия",
   "recipientEmailsLabel": "Имейл адреси на получатели (разделени със запетая)",
   "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
-  "saveRecipients": "Запази получателите",
+  "notificationTimeSubtitle": "Време за известяване по имейл",
+  "notificationThresholdOnetimeLabel": "Праг за еднократни събития (дни)",
+  "notificationThresholdYearlyLabel": "Праг за годишни събития (дни)",
+  "notificationThresholdPlaceholder": "7",
+  "invalidNotificationWindow": "Моля въведете валидни стойности за периода на известяване",
+  "saveRecipients": "Запази",
   "sendTestEmail": "Изпрати тестов имейл"
 }

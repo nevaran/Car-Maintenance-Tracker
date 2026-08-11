@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::infra::{EventRepository, UserRepository};
-use chrono::{Utc, Duration};
+use chrono::Utc;
 use lettre::message::{header::ContentType, Mailbox, Message, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, Tokio1Executor, AsyncTransport};
@@ -44,14 +44,59 @@ impl EmailService {
             .credentials(creds)
             .build();
 
-        // Load events and find upcoming within 7 days that haven't been emailed
+        // Load events and find upcoming events that haven't been emailed.
         let mut events = self.event_repo.load_all().await?;
         info!(event_count = events.len(), "loaded events from repository");
         let today = Utc::now().date_naive();
-        let cutoff = today + Duration::days(7);
+
+        let users = self.user_repo.load_all().await?;
+        let mut onetime_threshold = 7;
+        let mut yearly_threshold = 7;
+        let mut recipients: Vec<String> = Vec::new();
+        for u in users.iter().filter(|u| u.is_admin()) {
+            if let Some(val) = u.settings.get("notification_threshold_onetime") {
+                if let Ok(days) = val.parse::<i64>() {
+                    onetime_threshold = days.max(1);
+                }
+            }
+            if let Some(val) = u.settings.get("notification_threshold_yearly") {
+                if let Ok(days) = val.parse::<i64>() {
+                    yearly_threshold = days.max(1);
+                }
+            }
+            if let Some(val) = u.settings.get("notification_recipients") {
+                for r in val.split(',') {
+                    let rtrim = r.trim();
+                    if !rtrim.is_empty() {
+                        recipients.push(rtrim.to_string());
+                    }
+                }
+            }
+        }
+
+        info!(
+            admin_count = users.iter().filter(|u| u.is_admin()).count(),
+            one_time_window_days = onetime_threshold,
+            yearly_window_days = yearly_threshold,
+            recipient_count = recipients.len(),
+            "using configured notification windows"
+        );
 
         let mut pending: Vec<&mut crate::domain::Event> = events.iter_mut()
-            .filter(|e| !e.email_sent && !e.done && e.date >= today && e.date <= cutoff)
+            .filter(|e| {
+                if e.email_sent || e.done {
+                    return false;
+                }
+                let days_until = (e.date - today).num_days();
+                if days_until < 0 {
+                    return false;
+                }
+                if e.repeat == "yearly" {
+                    days_until <= yearly_threshold
+                } else {
+                    days_until <= onetime_threshold
+                }
+            })
             .collect();
 
         if pending.is_empty() {
@@ -93,26 +138,12 @@ impl EmailService {
         }
         html.push_str("</tbody></table></body></html>");
 
-        // Find admin recipients from user settings
-        let users = self.user_repo.load_all().await?;
-        let mut recipients: Vec<String> = Vec::new();
-        for u in users.iter().filter(|u| u.is_admin()) {
-            if let Some(val) = u.settings.get("notification_recipients") {
-                for r in val.split(',') {
-                    let rtrim = r.trim();
-                    if !rtrim.is_empty() {
-                        recipients.push(rtrim.to_string());
-                    }
-                }
-            }
-        }
-
-        info!(admin_count = users.iter().filter(|u| u.is_admin()).count(), recipients_count = recipients.len(), "discovered admin recipients");
-
         if recipients.is_empty() {
             info!("No notification recipients configured for admins; skipping email send");
             return Ok(());
         }
+
+        info!(admin_count = users.iter().filter(|u| u.is_admin()).count(), recipients_count = recipients.len(), "discovered admin recipients");
 
         // Build message
         let mut msg_builder = Message::builder()

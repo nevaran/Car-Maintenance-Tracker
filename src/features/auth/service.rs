@@ -416,7 +416,9 @@ impl AuthService {
             .await?
             .ok_or_else(|| AppError::Unauthorized("User not found".to_string()))?;
 
-        user.settings = cmd.settings;
+        for (key, value) in cmd.settings.into_iter() {
+            user.settings.insert(key, value);
+        }
 
         let mut users = self.user_repo.load_all().await?;
         if let Some(u) = users.iter_mut().find(|u| u.id == cmd.user_id) {

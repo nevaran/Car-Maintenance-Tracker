@@ -85,12 +85,17 @@
   "weekdays": ["月", "火", "水", "木", "金", "土", "日"],
   "manageRecipients": "受信者を管理",
   "recipientsSaved": "通知受信者を保存しました",
-  "errorSavingRecipients": "受信者の保存に失敗しました"
-    "pleaseEnterRecipients": "少なくとも1つの受信者のメールアドレスを入力してください",
-    "testEmailSent": "テストメールを送信しました",
-    "notificationRecipientsTitle": "通知の受信者",
-    "recipientEmailsLabel": "受信者のメールアドレス（カンマ区切り）",
-    "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
-    "saveRecipients": "受信者を保存",
-    "sendTestEmail": "テストメールを送信"
+  "errorSavingRecipients": "受信者の保存に失敗しました",
+  "pleaseEnterRecipients": "少なくとも1つの受信者のメールアドレスを入力してください",
+  "testEmailSent": "テストメールを送信しました",
+  "notificationRecipientsTitle": "通知の受信者",
+  "recipientEmailsLabel": "受信者のメールアドレス（カンマ区切り）",
+  "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
+  "notificationTimeSubtitle": "メール通知時間",
+  "notificationThresholdOnetimeLabel": "単発イベントの通知期間（日数）",
+  "notificationThresholdYearlyLabel": "年次イベントの通知期間（日数）",
+  "notificationThresholdPlaceholder": "7",
+  "invalidNotificationWindow": "有効な通知期間を入力してください",
+  "saveRecipients": "保存",
+  "sendTestEmail": "テストメールを送信"
 }

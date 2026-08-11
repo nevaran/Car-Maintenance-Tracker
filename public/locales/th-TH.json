@@ -90,6 +90,11 @@
   "notificationRecipientsTitle": "ผู้รับการแจ้งเตือน",
   "recipientEmailsLabel": "อีเมลผู้รับ (คั่นด้วยจุลภาค)",
   "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
-  "saveRecipients": "บันทึกผู้รับ",
+  "notificationTimeSubtitle": "เวลาแจ้งเตือนทางอีเมล",
+  "notificationThresholdOnetimeLabel": "ระยะเวลาแจ้งเตือนเหตุการณ์ครั้งเดียว (วัน)",
+  "notificationThresholdYearlyLabel": "ระยะเวลาแจ้งเตือนเหตุการณ์รายปี (วัน)",
+  "notificationThresholdPlaceholder": "7",
+  "invalidNotificationWindow": "โปรดป้อนค่าระยะเวลาแจ้งเตือนที่ถูกต้อง",
+  "saveRecipients": "บันทึก",
   "sendTestEmail": "ส่งอีเมลทดสอบ"
 }

@@ -112,6 +112,11 @@
    "notificationRecipientsTitle": "Recipients fer yer notices",
    "recipientEmailsLabel": "Recipient emails (comma-separated)",
    "recipientEmailsPlaceholder": "alice@example.com, bob@example.com",
-   "saveRecipients": "Save recipients",
+  "notificationTimeSubtitle": "Email notification time",
+  "notificationThresholdOnetimeLabel": "One-time logs (Days)",
+  "notificationThresholdYearlyLabel": "Yearly logs (Days)",
+   "notificationThresholdPlaceholder": "7",
+   "invalidNotificationWindow": "Please enter valid notification window values",
+  "saveRecipients": "Stash it",
    "sendTestEmail": "Send test email"
 }
