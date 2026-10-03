@@ -325,6 +325,19 @@ textarea::placeholder {
   font-size: 1rem;
 }
 
+.title-combobox > input {
+  padding-right: 4rem;
+}
+
+.title-preset-toggle {
+  width: 3.6rem;
+}
+
+.title-preset-option {
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+}
+
 textarea {
   resize: vertical;
   min-height: 8rem;

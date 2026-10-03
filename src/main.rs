@@ -27,6 +27,56 @@ use infra::{
     FileEventRepository, FileUserRepository, FileAuditRepository, FileSessionRepository, ProxyAwareIpExtractor, TimestampIdGenerator, BackupManager,
 };
 
+fn app_name_override() -> Option<String> {
+    std::env::var("APP_NAME")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn escape_js_string(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '\\' => escaped.push_str("\\\\"),
+            '"' => escaped.push_str("\\\""),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
+}
+
+fn render_index_html() -> axum::response::Html<String> {
+    let mut html = std::fs::read_to_string("public/index.html")
+        .expect("Failed to read public/index.html");
+
+    let app_name = app_name_override().unwrap_or_default();
+    let default_title = "Car Maintenance Tracker";
+    let display_title = if app_name.trim().is_empty() { default_title } else { app_name.trim() };
+    let escaped_title = display_title
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;");
+
+    html = html.replace(default_title, &escaped_title);
+
+    let config_script = format!(
+        r#"<script>window.APP_NAME_OVERRIDE = "{}";</script>"#,
+        escape_js_string(&app_name)
+    );
+    html = html.replace(
+        "<script src=\"device-detect.js\" defer></script>",
+        &format!("{config_script}\n<script src=\"device-detect.js\" defer></script>"),
+    );
+
+    axum::response::Html(html)
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize tracing
@@ -135,6 +185,8 @@ async fn main() {
     let health_clone1 = health.clone();
 
     let app = Router::new()
+        .route("/", get(|| async { render_index_html() }))
+        .route("/index.html", get(|| async { render_index_html() }))
         .route(
             "/api/setup",
             get(move || {

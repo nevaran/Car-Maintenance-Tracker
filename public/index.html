@@ -137,7 +137,11 @@
             <div class="form-panel">
               <div class="form-row">
                 <label for="title">Title</label>
-                <input id="title" type="text" placeholder="Oil change, insurance, etc." required />
+                <div class="title-combobox">
+                  <input id="title" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="title-presets" placeholder="Oil change, insurance, etc." required />
+                  <button id="title-preset-toggle" class="title-preset-toggle" type="button" aria-label="Choose a title" aria-controls="title-presets" aria-expanded="false"><span aria-hidden="true">▾</span></button>
+                  <div id="title-presets" class="title-presets" role="listbox" hidden></div>
+                </div>
               </div>
               <div class="form-row split" id="date-row">
                 <div>

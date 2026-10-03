@@ -621,6 +621,73 @@ button:focus {
   outline-offset: 2px;
 }
 
+.title-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.title-combobox > input {
+  padding-right: 3rem;
+}
+
+.title-preset-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2.7rem;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0 1vmin 1vmin 0;
+  background: transparent;
+  color: #c2d1f1;
+  cursor: pointer;
+}
+
+.title-presets {
+  position: fixed;
+  z-index: 60;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.45rem;
+  background: rgba(8, 19, 32, 0.99);
+  box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.4);
+}
+
+.title-presets[hidden] {
+  display: none;
+}
+
+.title-preset-option {
+  display: block;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #eef5ff;
+  font: inherit;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.title-preset-option:hover,
+.title-preset-option[aria-selected="true"] {
+  background: rgba(110, 148, 255, 0.16);
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-start;

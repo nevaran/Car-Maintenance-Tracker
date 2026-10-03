@@ -10,6 +10,7 @@ services:
     environment:
       - RUST_LOG=debug
       - RUST_BACKTRACE=1
+      - APP_NAME=${APP_NAME}
       - SMTP_SENDER=${SMTP_SENDER}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}

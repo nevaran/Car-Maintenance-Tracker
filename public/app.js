@@ -36,6 +36,8 @@ const dom = {
   cancelEventButton: document.getElementById('cancel-event'),
   form: document.getElementById('event-form'),
   title: document.getElementById('title'),
+  titlePresetToggle: document.getElementById('title-preset-toggle'),
+  titlePresetList: document.getElementById('title-presets'),
   date: document.getElementById('date'),
   endDate: document.getElementById('end-date'),
   endDateField: document.getElementById('end-date-field'),
@@ -252,6 +254,24 @@ const LOCALES = [
 
 const localeBundles = {};
 let selectedLocale = 'en-US';
+const TITLE_PRESET_KEYS = [
+  'titlePresetFuel',
+  'titlePresetPremiumFuel',
+  'titlePresetOilChange',
+  'titlePresetVignette',
+  'titlePresetVehicleTax',
+  'titlePresetInsurance',
+  'titlePresetRepair',
+];
+let activeTitlePresetIndex = -1;
+const APP_NAME_OVERRIDE = (() => {
+  const raw = typeof window !== 'undefined' ? (window.APP_NAME_OVERRIDE ?? '') : '';
+  return typeof raw === 'string' ? raw.trim() : '';
+})();
+
+function getAppDisplayName() {
+  return APP_NAME_OVERRIDE || gettext('appTitle');
+}
 
 // Load localization bundles for all supported languages
 async function loadLocales() {
@@ -277,6 +297,9 @@ function loadUserSettings() {
 }
 
 function gettext(key) {
+  if (key === 'appTitle' && APP_NAME_OVERRIDE) {
+    return APP_NAME_OVERRIDE;
+  }
   return localeBundles[selectedLocale]?.[key] ?? localeBundles['en-US']?.[key] ?? key;
 }
 
@@ -338,11 +361,111 @@ function closeLocaleMenu() {
   dom.localeButton.setAttribute('aria-expanded', 'false');
 }
 
+function closeTitlePresetMenu() {
+  dom.titlePresetList.hidden = true;
+  dom.titlePresetList.style.left = '';
+  dom.titlePresetList.style.width = '';
+  dom.titlePresetList.style.top = '';
+  dom.titlePresetList.style.bottom = '';
+  dom.titlePresetList.style.maxHeight = '';
+  dom.titlePresetList.style.overflowY = '';
+  dom.title.setAttribute('aria-expanded', 'false');
+  dom.title.removeAttribute('aria-activedescendant');
+  dom.titlePresetToggle.setAttribute('aria-expanded', 'false');
+  dom.titlePresetList.querySelectorAll('.title-preset-option').forEach((option) => {
+    option.setAttribute('aria-selected', 'false');
+  });
+  activeTitlePresetIndex = -1;
+}
+
+function positionTitlePresetMenu() {
+  const modalContent = dom.modal.querySelector('.modal-content');
+  const modalRect = modalContent.getBoundingClientRect();
+  const inputRect = dom.title.getBoundingClientRect();
+  const visibleTop = Math.max(0, modalRect.top);
+  const visibleBottom = Math.min(window.innerHeight, modalRect.bottom);
+  const availableBelow = Math.max(0, visibleBottom - inputRect.bottom - 8);
+  const availableAbove = Math.max(0, inputRect.top - visibleTop - 8);
+
+  dom.titlePresetList.style.maxHeight = 'none';
+  dom.titlePresetList.style.overflowY = 'hidden';
+  const naturalHeight = dom.titlePresetList.scrollHeight;
+  const opensAbove = availableBelow < naturalHeight && availableAbove > availableBelow;
+  const availableSpace = opensAbove ? availableAbove : availableBelow;
+  const needsScroll = naturalHeight > availableSpace;
+
+  dom.titlePresetList.style.left = `${inputRect.left}px`;
+  dom.titlePresetList.style.width = `${inputRect.width}px`;
+  dom.titlePresetList.style.top = opensAbove ? 'auto' : `${inputRect.bottom + 8}px`;
+  dom.titlePresetList.style.bottom = opensAbove ? `${window.innerHeight - inputRect.top + 8}px` : 'auto';
+  dom.titlePresetList.style.maxHeight = `${Math.min(naturalHeight, availableSpace)}px`;
+  dom.titlePresetList.style.overflowY = needsScroll ? 'auto' : 'hidden';
+}
+
+function showTitlePresetMenu(filterInput = true) {
+  if (dom.title.disabled || dom.title.readOnly) {
+    closeTitlePresetMenu();
+    return;
+  }
+
+  const query = filterInput ? dom.title.value.trim().toLocaleLowerCase() : '';
+  const options = [...dom.titlePresetList.querySelectorAll('.title-preset-option')];
+  options.forEach((option) => {
+    option.hidden = !option.textContent.toLocaleLowerCase().includes(query);
+  });
+
+  if (!options.some((option) => !option.hidden)) {
+    closeTitlePresetMenu();
+    return;
+  }
+
+  dom.titlePresetList.hidden = false;
+  dom.title.setAttribute('aria-expanded', 'true');
+  dom.titlePresetToggle.setAttribute('aria-expanded', 'true');
+  dom.title.removeAttribute('aria-activedescendant');
+  activeTitlePresetIndex = -1;
+  positionTitlePresetMenu();
+}
+
+function chooseTitlePreset(option) {
+  dom.title.value = option.textContent;
+  dom.title.focus();
+  closeTitlePresetMenu();
+}
+
+function setActiveTitlePreset(index) {
+  const options = [...dom.titlePresetList.querySelectorAll('.title-preset-option:not([hidden])')];
+  if (!options.length) return;
+
+  activeTitlePresetIndex = (index + options.length) % options.length;
+  options.forEach((option, optionIndex) => {
+    option.setAttribute('aria-selected', String(optionIndex === activeTitlePresetIndex));
+  });
+  dom.title.setAttribute('aria-activedescendant', options[activeTitlePresetIndex].id);
+  options[activeTitlePresetIndex].scrollIntoView({ block: 'nearest' });
+}
+
 function applyLocaleTexts() {
   const locale = localeBundles[selectedLocale] || localeBundles['en-US'] || {};
+  const appDisplayName = getAppDisplayName();
+
+  dom.title.placeholder = gettext('titlePresetPlaceholder');
+  dom.titlePresetToggle.setAttribute('aria-label', gettext('titlePresetPlaceholder'));
+  dom.titlePresetList.replaceChildren(...TITLE_PRESET_KEYS.map((key) => {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'title-preset-option';
+    option.id = `title-preset-${TITLE_PRESET_KEYS.indexOf(key)}`;
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', 'false');
+    option.textContent = gettext(key);
+    return option;
+  }));
+  closeTitlePresetMenu();
 
   document.documentElement.lang = selectedLocale === 'bg' ? 'bg' : 'en';
-  document.getElementById('app-title').textContent = gettext('appTitle');
+  document.title = appDisplayName;
+  document.getElementById('app-title').textContent = appDisplayName;
   document.getElementById('app-subtitle').textContent = gettext('appSubtitle');
   document.getElementById('today-label').textContent = `${gettext('todayLabel')} ${formatISO(new Date())}`;
   document.getElementById('calendar-title').textContent = gettext('calendarTitle');
@@ -461,6 +584,7 @@ function showEventModal({ reset = false } = {}) {
 function hideEventModal() {
   dom.modal.classList.remove('open');
   dom.modal.setAttribute('aria-hidden', 'true');
+  closeTitlePresetMenu();
 }
 
 function startOfWeek(date) {
@@ -946,6 +1070,7 @@ function resetForm() {
   dom.done.checked = false;
   dom.title.readOnly = false;
   dom.title.disabled = false;
+  dom.titlePresetToggle.disabled = false;
   dom.title.title = '';
   dom.title.removeAttribute('aria-label');
   dom.repeat.disabled = false;
@@ -959,6 +1084,58 @@ function resetForm() {
   updateEndDateVisibility();
   updateSplitOnChangeWarning();
 }
+
+dom.title.addEventListener('focus', () => showTitlePresetMenu(false));
+dom.title.addEventListener('click', () => {
+  if (dom.titlePresetList.hidden) showTitlePresetMenu(false);
+});
+dom.title.addEventListener('input', () => showTitlePresetMenu());
+dom.title.addEventListener('blur', () => {
+  window.setTimeout(() => {
+    if (!dom.title.closest('.title-combobox').contains(document.activeElement)) {
+      closeTitlePresetMenu();
+    }
+  }, 0);
+});
+dom.title.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (dom.titlePresetList.hidden) showTitlePresetMenu(false);
+    const options = dom.titlePresetList.querySelectorAll('.title-preset-option:not([hidden])');
+    if (options.length) {
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      setActiveTitlePreset(activeTitlePresetIndex + direction);
+      event.preventDefault();
+    }
+  } else if (event.key === 'Enter' && !dom.titlePresetList.hidden && activeTitlePresetIndex >= 0) {
+    const options = dom.titlePresetList.querySelectorAll('.title-preset-option:not([hidden])');
+    chooseTitlePreset(options[activeTitlePresetIndex]);
+    event.preventDefault();
+  } else if (event.key === 'Escape' && !dom.titlePresetList.hidden) {
+    closeTitlePresetMenu();
+    event.preventDefault();
+  }
+});
+dom.titlePresetToggle.addEventListener('click', () => {
+  if (dom.titlePresetList.hidden) {
+    dom.title.focus();
+    showTitlePresetMenu(false);
+  } else {
+    closeTitlePresetMenu();
+  }
+});
+dom.titlePresetList.addEventListener('click', (event) => {
+  const option = event.target.closest('.title-preset-option');
+  if (option && !option.hidden) chooseTitlePreset(option);
+});
+document.addEventListener('pointerdown', (event) => {
+  if (!event.target.closest('.title-combobox')) closeTitlePresetMenu();
+});
+window.addEventListener('resize', () => {
+  if (!dom.titlePresetList.hidden) positionTitlePresetMenu();
+});
+dom.modal.querySelector('.modal-content').addEventListener('scroll', () => {
+  if (!dom.titlePresetList.hidden) positionTitlePresetMenu();
+});
 
 dom.form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -1068,6 +1245,7 @@ function loadEventForEdit(id, originId, occurrenceDate, isGenerated, isOverride)
   dom.done.checked = (actualOverride ? event : sourceEvent)?.done || false;
   dom.title.readOnly = isReadOnly;
   dom.title.disabled = isReadOnly;
+  dom.titlePresetToggle.disabled = isReadOnly;
   if (isReadOnly) {
     dom.title.title = gettext('titleLockedTooltip');
     dom.title.setAttribute('aria-label', gettext('titleLockedTooltip'));
