@@ -107,9 +107,9 @@ async fn main() {
     if let Err(err) = auth_service.load_sessions().await {
         error!(error = ?err, "Failed to load persisted sessions");
     }
-    let event_service = Arc::new(EventService::new(event_repo.clone(), id_gen));
+    let event_service = Arc::new(EventService::new(event_repo.clone(), id_gen.clone()));
     // Email service for sending upcoming event notifications
-    let email_service = Arc::new(EmailService::new(event_repo.clone(), user_repo.clone()));
+    let email_service = Arc::new(EmailService::new(event_repo.clone(), user_repo.clone(), id_gen));
 
     // Background pruning task to cleanup expired sessions periodically
     {
